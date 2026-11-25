@@ -1229,9 +1229,13 @@
                 return '<div class="gps-item' + (d.id === D.sel ? ' sel' : '') + '" data-id="' + esc(d.id) + '">'
                     + '<span class="gps-ic">' + esc(d.emoji) + '</span>'
                     + '<div class="gps-main"><b>' + esc(d.name) + '</b><small>' + esc(dateTxt(d.t)) + ' — ' + d.lat.toFixed(4) + ', ' + d.lng.toFixed(4) + (fin(d.acc) ? ' — ±' + d.acc + ' م' : '') + '</small></div>'
-                    + '<span class="gps-dist" data-d="' + esc(d.id) + '">' + (S.pos ? fmtD(d._m) : '') + '</span>'
+                    /* [تصميم] المسافة + الاتجاه (يحدّثهما updDist تلقائيًا عبر data-d / data-b) */
+                    + '<span class="gps-lx-nd"><span class="gps-dist" data-d="' + esc(d.id) + '">' + (S.pos ? fmtD(d._m) : '') + '</span>'
+                    + '<small class="gps-dir" data-b="' + esc(d.id) + '">' + (S.pos ? dirLbl(bear(lat(), lng(), d.lat, d.lng)) : '') + '</small></span>'
+                    /* [تصميم] صف الأزرار: «توجّه» يمرّ لنفس معالج الضغط على الصف (pickDest) */
+                    + '<span class="gps-acts"><button type="button" class="gps-act gps-goi" title="توجّه إليها">🧭</button>'
                     + '<button type="button" class="gps-act" data-ed title="تعديل">✏️</button>'
-                    + '<button type="button" class="gps-act" data-del title="حذف">🗑️</button></div>';
+                    + '<button type="button" class="gps-act" data-del title="حذف">🗑️</button></span></div>';
             }
             function updDist() {
                 if (!S.pos)
