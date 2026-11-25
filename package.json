@@ -6,7 +6,7 @@
   "scripts": {
     "serve": "npx --yes http-server www -p 8080 -c-1",
     "android:add": "npx cap add android && node scripts/patch-android.js",
-    "android:icons": "npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#f2b705'",
+    "android:icons": "npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#000000' --iconBackgroundColorDark '#000000'",
     "sync": "npx cap sync android",
     "apk": "cd android && ./gradlew assembleDebug"
   },
