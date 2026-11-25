@@ -1,0 +1,425 @@
+/* =====================================================================
+   GBS المنتصر — طبقة التصميم الفاخرة
+   شكل فقط: لا يغيّر أي منطق. يتقدّم على أنماط الأداة لأنه يُحمَّل بعدها.
+   الهوية: ذهبي + أسود + كحلي
+   ===================================================================== */
+:root{
+  --lx-bg:#070a12;
+  --lx-navy:#0d1424;
+  --lx-navy-2:#131d31;
+  --lx-navy-3:#1a2741;
+  --lx-line:#223050;
+  --lx-gold:#f2b705;
+  --lx-gold-hi:#ffe27a;
+  --lx-gold-lo:#a87400;
+  --lx-gold-grad:linear-gradient(180deg,#ffe58a 0%,#f7c51e 45%,#d99a00 100%);
+  --lx-gold-line:rgba(242,183,5,.28);
+  --lx-ok:#34c77b;
+  --lx-warn:#f0b03c;
+  --lx-bad:#ff6b5b;
+  --lx-r:18px;
+  --lx-r-sm:13px;
+  --lx-nav-h:66px;
+  --lx-shadow:0 12px 30px -12px rgba(0,0,0,.75);
+  --lx-ease:cubic-bezier(.2,.8,.2,1);
+}
+
+/* ---------- خلفية وإطار عام ---------- */
+body{
+  background:
+    radial-gradient(120% 60% at 50% -10%,rgba(242,183,5,.10),transparent 60%),
+    radial-gradient(90% 50% at 100% 100%,rgba(40,70,140,.18),transparent 60%),
+    var(--lx-bg);
+  background-attachment:fixed;
+  padding:env(safe-area-inset-top) 0 0;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(242,183,5,.35)}
+
+/* ---------- أيقونات (أقنعة SVG بلون النص) ---------- */
+.lx-i,.icon-btn::before,.gps-tab::before,
+#gpsPark::before,#gpsCopy::before,#gpsShare::before,#gpsMaps::before,
+.gps-cell small::before,#gpsPickGo::before,#gpsChange::before,#gpsStop::before,
+#gpsGo::before,.gps-goi::before,.gps-act[data-ed]::before,.gps-act[data-del]::before,.gps-cp::before{
+  content:"";display:inline-block;flex-shrink:0;
+  width:20px;height:20px;background:currentColor;
+  -webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;
+}
+:root{
+  --i-compass:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M15.8 8.2l-2.3 5.3-5.3 2.3 2.3-5.3z' fill='black'/></svg>");
+  --i-pin:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 21s-7-6.1-7-11.4a7 7 0 0 1 14 0C19 14.9 12 21 12 21z'/><circle cx='12' cy='9.6' r='2.6'/></svg>");
+  --i-shield:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l8 3v6c0 4.6-3.4 8.3-8 9-4.6-.7-8-4.4-8-9V6z'/><path d='M8.8 12.2l2.2 2.2 4.3-4.4'/></svg>");
+  --i-car:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 16.5V13l1.8-4.7A2 2 0 0 1 7.7 7h8.6a2 2 0 0 1 1.9 1.3L20 13v3.5'/><path d='M3 13h18v4H3z'/><path d='M6 17v2M18 17v2'/><circle cx='7.5' cy='15' r='.6' fill='black'/><circle cx='16.5' cy='15' r='.6' fill='black'/></svg>");
+  --i-copy:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='9' y='9' width='11' height='11' rx='2.5'/><path d='M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15'/></svg>");
+  --i-share:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='18' cy='5.5' r='2.5'/><circle cx='6' cy='12' r='2.5'/><circle cx='18' cy='18.5' r='2.5'/><path d='M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1'/></svg>");
+  --i-map:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 4L3.5 6v14L9 18l6 2 5.5-2V4L15 6z'/><path d='M9 4v14M15 6v14'/></svg>");
+  --i-target:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><circle cx='12' cy='12' r='7.5'/><circle cx='12' cy='12' r='2.5' fill='black'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3'/></svg>");
+  --i-nav:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'><path d='M12 3l7 18-7-4.2L5 21z' fill='black'/></svg>");
+  --i-mountain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2.5 20l6.5-11 4 6.5 2.5-3.5 6 8z'/></svg>");
+  --i-gauge:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><path d='M3.5 17a8.5 8.5 0 1 1 17 0'/><path d='M12 17l4.5-5.5'/><circle cx='12' cy='17' r='1.4' fill='black'/></svg>");
+  --i-flag:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 21V4'/><path d='M5 4h11l-2 4 2 4H5'/></svg>");
+  --i-swap:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 4L3 8l4 4'/><path d='M3 8h14'/><path d='M17 20l4-4-4-4'/><path d='M21 16H7'/></svg>");
+  --i-stop:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'><circle cx='12' cy='12' r='9'/><rect x='8.5' y='8.5' width='7' height='7' rx='1.2' fill='black'/></svg>");
+  --i-plus:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'><path d='M12 5v14M5 12h14'/></svg>");
+  --i-search:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'><circle cx='11' cy='11' r='6.5'/><path d='M16 16l4.5 4.5'/></svg>");
+  --i-edit:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 20h4L19 9l-4-4L4 16z'/><path d='M13.5 6.5l4 4'/></svg>");
+  --i-trash:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 7h16'/><path d='M9 7V4.5h6V7'/><path d='M6.5 7l1 13h9l1-13'/><path d='M10 11v5M14 11v5'/></svg>");
+  --i-help:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><circle cx='12' cy='12' r='9'/><path d='M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.6'/><circle cx='12' cy='17.2' r='.6' fill='black'/></svg>");
+  --i-save:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 4v11'/><path d='M7.5 10.5L12 15l4.5-4.5'/><path d='M4 17v2.5h16V17'/></svg>");
+  --i-install:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='6' y='2.5' width='12' height='19' rx='2.5'/><path d='M12 7v7M9 11l3 3 3-3'/></svg>");
+}
+
+/* ---------- الشريط العلوي ---------- */
+.app-bar{
+  position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;
+  padding:8px 14px;min-height:56px;
+  background:linear-gradient(180deg,rgba(7,10,18,.96),rgba(7,10,18,.86));
+  -webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);
+  border-bottom:1px solid var(--lx-gold-line);
+}
+.app-bar::after{content:"";position:absolute;inset:auto 18% -1px;height:1px;background:linear-gradient(90deg,transparent,var(--lx-gold),transparent);opacity:.7}
+#funToolTitle{flex:1;margin:0;min-width:0;font-size:20px;font-weight:900;color:var(--lx-gold-hi)}
+#funToolTitle .gbs-en{font-size:22px !important;letter-spacing:.16em}
+#funToolTitle .gbs-ar{font-size:21px !important;padding-inline-start:9px}
+.icon-btn{
+  width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  color:var(--lx-gold-hi);background:linear-gradient(180deg,var(--lx-navy-3),var(--lx-navy));
+  border:1px solid var(--lx-gold-line);box-shadow:inset 0 1px 0 rgba(255,226,122,.12),0 4px 10px rgba(0,0,0,.4);
+  transition:transform .15s var(--lx-ease);
+}
+.icon-btn:active{transform:scale(.92)}
+.icon-btn::before{width:20px;height:20px}
+.lx-ic-help{--i:var(--i-help)}
+.lx-ic-backup{--i:var(--i-save)}
+.lx-ic-install{--i:var(--i-install)}
+
+/* ---------- المحتوى ---------- */
+#funToolBody{padding:10px 12px calc(var(--lx-nav-h) + 22px + env(safe-area-inset-bottom))}
+#gpsFrame{max-width:560px}
+#gpsBody{animation:lxIn .28s var(--lx-ease)}
+@keyframes lxIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- الأزرار العامة ---------- */
+.btn{
+  flex:1;min-height:46px;padding:10px 14px;border-radius:999px;
+  font-size:14.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;
+  transition:transform .12s var(--lx-ease),box-shadow .2s,background .2s;
+}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45}
+.btn-primary{color:var(--on-gold);background:var(--lx-gold-grad);box-shadow:0 6px 16px -6px rgba(242,183,5,.6),inset 0 1px 0 rgba(255,255,255,.55);text-shadow:none}
+.btn-ghost{color:var(--text);background:linear-gradient(180deg,var(--lx-navy-3),var(--lx-navy-2));border:1px solid var(--lx-line);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.btn-danger{background:var(--lx-bad);color:#fff}
+#gpsFrame .btn{min-height:46px;padding:10px 12px;font-size:14px;border-radius:999px;font-weight:800}
+#gpsFrame .gps-row{gap:8px;margin-top:8px}
+.hint{color:var(--text-dim);font-size:13px}
+.row{display:flex;gap:10px}
+
+/* ---------- التبويبات: شريط سفلي ثابت ---------- */
+#gpsFrame .gps-tabs{
+  position:fixed;z-index:40;left:50%;transform:translateX(-50%);
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  width:min(calc(100% - 24px),536px);height:var(--lx-nav-h);margin:0;padding:6px;gap:6px;
+  border-radius:24px;
+  background:linear-gradient(180deg,rgba(22,32,54,.92),rgba(9,13,24,.96));
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+  border:1px solid var(--lx-gold-line);
+  box-shadow:0 18px 40px -10px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,226,122,.10);
+}
+#gpsFrame .gps-tab{
+  position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:4px !important;border-radius:18px;
+  font-size:12.5px !important;font-weight:800;color:var(--text-dim);
+  transition:color .2s,background .25s var(--lx-ease),transform .15s;
+}
+#gpsFrame .gps-tab::before{width:23px;height:23px;transition:transform .25s var(--lx-ease)}
+#gpsFrame .gps-tab[data-t="home"]::before{--i:var(--i-compass)}
+#gpsFrame .gps-tab[data-t="dest"]::before{--i:var(--i-pin)}
+#gpsFrame .gps-tab[data-t="info"]::before{--i:var(--i-shield)}
+#gpsFrame .gps-tab:active{transform:scale(.94)}
+#gpsFrame .gps-tab.on{
+  color:#1f1500;background:var(--lx-gold-grad);
+  box-shadow:0 8px 18px -6px rgba(242,183,5,.65),inset 0 1px 0 rgba(255,255,255,.6);
+}
+#gpsFrame .gps-tab.on::before{transform:scale(1.08)}
+
+/* =========================== الرئيسية =========================== */
+/* ترتيب العناصر: البوصلة ثم البطاقات ثم الأزرار ثم الحالة */
+#gpsBody:has(> .gps-panel){display:flex;flex-direction:row;flex-wrap:wrap;column-gap:8px}
+#gpsBody:has(> .gps-panel)>*{order:20;flex:0 0 100%;min-width:0}
+#gpsBody:has(> .gps-panel)>.gps-loc{order:1;flex:0 0 auto;margin-inline:auto}
+#gpsBody:has(> .gps-panel)>.gps-panel{order:2}
+#gpsBody:has(> .gps-panel)>.gps-grid{order:3}
+#gpsBody:has(> .gps-panel)>#gpsHomeSave,#gpsBody:has(> .gps-panel)>#gpsHomeBox{order:4}
+#gpsBody:has(> .gps-panel)>#gpsEdSlot{order:5}
+#gpsBody:has(> .gps-panel)>.gps-row:has(#gpsPickGo),#gpsBody:has(> .gps-panel)>.gps-row:has(#gpsChange){order:6}
+/* صفّا الأزرار السريعة يصبحان صفًا واحدًا من 4 أزرار */
+#gpsBody:has(> .gps-panel)>.gps-row:has(#gpsPark),#gpsBody:has(> .gps-panel)>.gps-row:has(#gpsShare){order:7;flex:1 1 calc(50% - 4px);margin:0 0 10px;gap:8px}
+#gpsBody:has(> .gps-panel)>.gps-stat{order:8}
+#gpsBody:has(> .gps-panel)>.gps-note{order:9}
+
+/* سطر حالة الموقع أعلى البوصلة */
+.gps-loc{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  margin:0 auto 8px;padding:6px 14px;border-radius:999px;width:fit-content;max-width:100%;
+  font-size:13.5px;font-weight:800;line-height:1.4;
+  background:rgba(13,20,36,.75);border:1px solid var(--lx-line);
+}
+.gps-loc .gps-dot{width:11px;height:11px}
+.gps-dot{width:10px;height:10px}
+.gps-dot.ok{background:var(--lx-ok);box-shadow:0 0 0 4px rgba(52,199,123,.18),0 0 12px rgba(52,199,123,.7)}
+.gps-dot.warn{background:var(--lx-warn);box-shadow:0 0 0 4px rgba(240,176,60,.18),0 0 12px rgba(240,176,60,.6)}
+.gps-dot.bad{background:var(--lx-bad);box-shadow:0 0 0 4px rgba(255,107,91,.18),0 0 12px rgba(255,107,91,.6)}
+@keyframes gpsPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+/* لوحة البوصلة */
+.gps-panel{
+  padding:12px 8px 10px;margin-bottom:10px;border-radius:28px;
+  background:
+    radial-gradient(110% 70% at 50% 0%,rgba(242,183,5,.16),transparent 55%),
+    radial-gradient(100% 100% at 50% 100%,#0b1222 0%,#05070d 70%);
+  border:1px solid rgba(242,183,5,.42);
+  box-shadow:0 22px 46px -18px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,226,122,.16),inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.gps-dst{
+  min-height:1.5em;margin:0 0 2px;font-size:16px;font-weight:900;color:var(--lx-gold-hi);letter-spacing:.01em;
+}
+.gps-dst span{padding:3px 14px;border-radius:999px;background:rgba(242,183,5,.10);border:1px solid rgba(242,183,5,.25)}
+.gps-dial{margin:2px 0 0;padding:0}
+.gps-dial svg{
+  width:min(100%,62vh,470px);max-width:none;
+  filter:drop-shadow(0 14px 30px rgba(0,0,0,.65)) drop-shadow(0 0 22px rgba(242,183,5,.12));
+}
+/* حركة سلسة للمؤشر والقرص (تُدار من luxe.js دون تغيير الحساب) */
+#gpsArrow,#gpsRing{transform-box:view-box;transform-origin:100px 100px;will-change:transform}
+#gpsArrow.lx-sm,#gpsRing.lx-sm{transition:transform .32s var(--lx-ease)}
+@media (prefers-reduced-motion:reduce){#gpsArrow.lx-sm,#gpsRing.lx-sm{transition:none}}
+.lx-deg{font-size:6.4px;font-weight:800;fill:rgba(255,226,122,.62);font-family:"Tajawal",system-ui,sans-serif}
+.gps-far{
+  margin:2px 0 0;font-size:40px;font-weight:900;line-height:1.15;letter-spacing:.01em;
+  background:linear-gradient(180deg,#fff4bf 0%,#ffd84a 45%,#e0a100 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 12px rgba(242,183,5,.35));
+  font-variant-numeric:tabular-nums;
+}
+.gps-sub{min-height:3.4em;margin:2px 6px 0;font-size:13.5px;line-height:1.75;color:#d9cfa9}
+
+/* بطاقات المعلومات */
+#gpsFrame .gps-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.gps-cell{
+  position:relative;padding:9px 12px 10px;border-radius:var(--lx-r-sm);min-width:0;
+  background:linear-gradient(160deg,var(--lx-navy-3) 0%,var(--lx-navy) 100%);
+  border:1px solid var(--lx-line);box-shadow:var(--lx-shadow),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.gps-cell::after{content:"";position:absolute;top:0;inset-inline-start:12px;width:26px;height:2px;border-radius:0 0 3px 3px;background:var(--lx-gold-grad);opacity:.85}
+.gps-cell small{display:flex;align-items:center;gap:6px;margin:0 0 3px;font-size:12px;font-weight:700;color:var(--text-dim)}
+.gps-cell small::before{width:15px;height:15px;color:var(--lx-gold)}
+.gps-cell:has(#gpsAcc) small::before{--i:var(--i-target)}
+.gps-cell:has(#gpsHdg) small::before{--i:var(--i-nav)}
+.gps-cell:has(#gpsAlt) small::before{--i:var(--i-mountain)}
+.gps-cell:has(#gpsSpd) small::before{--i:var(--i-gauge)}
+.gps-cell b{font-size:18px;font-weight:900;line-height:1.25;word-break:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text)}
+
+/* زر الحفظ الرئيسي */
+.gps-big{
+  min-height:54px;padding:12px;margin:0 0 10px !important;border-radius:999px;
+  font-size:16.5px;font-weight:900;color:#1f1500;background:var(--lx-gold-grad);
+  box-shadow:0 12px 26px -10px rgba(242,183,5,.7),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(150,95,0,.35);
+}
+.gps-big:active{transform:scale(.98)}
+
+/* الأزرار السريعة (موقف السيارة / نسخ / مشاركة / خرائط) */
+#gpsBody>.gps-row:has(#gpsPark) .btn,#gpsBody>.gps-row:has(#gpsShare) .btn{
+  flex-direction:column;gap:5px;min-height:70px;padding:9px 4px;border-radius:var(--lx-r-sm);
+  font-size:12px;font-weight:800;line-height:1.25;
+  background:linear-gradient(170deg,var(--lx-navy-3),var(--lx-navy));border:1px solid var(--lx-line);
+}
+#gpsPark::before,#gpsCopy::before,#gpsShare::before,#gpsMaps::before{width:24px;height:24px;color:var(--lx-gold)}
+#gpsPark::before{--i:var(--i-car)}
+#gpsCopy::before{--i:var(--i-copy)}
+#gpsShare::before{--i:var(--i-share)}
+#gpsMaps::before{--i:var(--i-map)}
+#gpsPickGo::before{--i:var(--i-flag)}
+#gpsChange::before{--i:var(--i-swap)}
+#gpsStop::before{--i:var(--i-stop)}
+#gpsPickGo::before,#gpsChange::before,#gpsStop::before{width:18px;height:18px;color:var(--lx-gold)}
+#gpsBody>.gps-row:has(#gpsPickGo),#gpsBody>.gps-row:has(#gpsChange){margin:0 0 10px !important}
+#gpsStop{color:#ffb4aa}
+#gpsStop::before{color:var(--lx-bad) !important}
+
+/* سطر الحالة */
+.gps-stat{
+  gap:10px;padding:9px 14px;margin-bottom:10px;border-radius:999px;
+  font-size:13px;font-weight:700;line-height:1.5;
+  background:rgba(13,20,36,.8);border:1px solid var(--lx-line);
+}
+.gps-stat:has(.gps-dot.ok){border-color:rgba(52,199,123,.4)}
+.gps-stat:has(.gps-dot.warn){border-color:rgba(240,176,60,.4)}
+.gps-stat:has(.gps-dot.bad){border-color:rgba(255,107,91,.45)}
+
+/* الملاحظات: سطران وتُفتح باللمس */
+.gps-note{
+  margin:2px 4px 10px;font-size:12px;line-height:1.75;color:var(--text-dim);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;position:relative;
+}
+.gps-note.lx-open{-webkit-line-clamp:unset;display:block}
+.gps-note:not(.lx-open)::after{content:"المزيد";position:absolute;bottom:0;left:0;padding-inline-start:26px;font-weight:800;color:var(--lx-gold);background:linear-gradient(90deg,var(--lx-bg) 70%,transparent)}
+
+/* محرّر الاسم / الوجهة */
+.gps-ed{
+  padding:14px;margin-bottom:10px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,#1b2338,#0e1424);border:1px solid rgba(242,183,5,.6);
+  box-shadow:0 0 0 4px rgba(242,183,5,.08),var(--lx-shadow);
+}
+.gps-in{min-height:48px;padding:12px 14px;border-radius:var(--lx-r-sm);font-size:15px;background:#0a1020;border:1px solid var(--lx-line);color:var(--text);transition:border-color .2s,box-shadow .2s}
+.gps-in:focus{outline:0;border-color:var(--lx-gold);box-shadow:0 0 0 3px rgba(242,183,5,.18)}
+.gps-chips{gap:6px;margin:10px 0}
+.gps-chip{width:44px;height:44px;border-radius:12px;font-size:21px;background:#0a1020;border:1px solid var(--lx-line);transition:transform .12s}
+.gps-chip:active{transform:scale(.9)}
+.gps-chip.on{border-color:var(--lx-gold);background:rgba(242,183,5,.18);box-shadow:0 0 0 2px rgba(242,183,5,.25)}
+
+/* =========================== الوجهات =========================== */
+.gps-h{margin:4px 2px 8px;font-size:15px}
+.gps-h span::before{height:16px;background:var(--lx-gold-grad)}
+.gps-h em{background:rgba(242,183,5,.12);color:var(--lx-gold-hi);border-color:rgba(242,183,5,.3)}
+#gpsRecent{margin-bottom:8px}
+.gps-rc{gap:10px;padding:2px 2px 6px}
+.gps-card{
+  flex:0 0 82%;max-width:330px;padding:11px 12px;border-radius:var(--lx-r);
+  background:linear-gradient(160deg,#1a2540 0%,#0c1222 100%);
+  border:1px solid var(--lx-line);box-shadow:var(--lx-shadow);
+}
+.gps-card.sel{border-color:var(--lx-gold);box-shadow:0 0 0 1px var(--lx-gold) inset,0 10px 26px -10px rgba(242,183,5,.45)}
+.gps-card.new{flex:0 0 100%}
+.gps-ic{width:44px;height:44px;border-radius:14px;font-size:22px;background:radial-gradient(circle at 50% 30%,#22304f,#0a1020);border:1px solid var(--lx-line)}
+.gps-ch .gps-main b{font-size:16px;font-weight:900}
+.gps-cd{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:8px}
+.gps-cd div{padding:5px 10px;border-radius:11px;background:rgba(5,8,16,.55);border:1px solid rgba(255,255,255,.04)}
+.gps-cd b{font-size:13px}
+.gps-cd div:first-child b,.gps-cd div:nth-child(2) b{font-size:16px;font-weight:900;color:var(--lx-gold-hi)}
+.gps-cf{margin-top:10px;gap:8px}
+.gps-go{min-height:46px;padding:10px;border-radius:999px;font-size:14.5px;font-weight:900;color:#1f1500;background:var(--lx-gold-grad);box-shadow:0 8px 18px -8px rgba(242,183,5,.7),inset 0 1px 0 rgba(255,255,255,.55)}
+.gps-cp{width:46px;height:46px;font-size:0;color:var(--lx-gold);background:linear-gradient(180deg,var(--lx-navy-3),var(--lx-navy));border:1px solid var(--lx-line)}
+.gps-cp::before{--i:var(--i-copy)}
+.gps-selb{top:12px;left:12px;font-size:11px;padding:3px 10px;background:var(--lx-gold-grad);box-shadow:0 4px 10px rgba(242,183,5,.4)}
+
+/* زر الإضافة */
+.gps-add{
+  flex-direction:row;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  min-height:58px;padding:10px 16px;margin:0 0 10px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,rgba(242,183,5,.16),rgba(242,183,5,.05)) !important;
+  color:var(--lx-gold-hi) !important;border:1.5px dashed rgba(242,183,5,.6);box-shadow:none;
+  font-size:16px;font-weight:900;
+}
+.gps-add>span{display:flex;align-items:center;gap:8px;font-size:17px}
+.gps-add small{color:var(--text-dim) !important;font-size:12.5px;font-weight:700}
+
+/* قائمة الوجهات */
+.gps-list{gap:8px;margin-top:0}
+.gps-item{
+  flex-wrap:wrap;gap:8px 10px;padding:10px 12px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,var(--lx-navy-3),var(--lx-navy));border:1px solid var(--lx-line);box-shadow:var(--lx-shadow);cursor:pointer;
+}
+.gps-item.sel{border-color:var(--lx-gold);box-shadow:0 0 0 1px var(--lx-gold) inset,0 10px 24px -12px rgba(242,183,5,.5)}
+.gps-item .gps-main{flex:1 1 0}
+.gps-main b{font-size:15.5px;font-weight:900}
+.gps-main small{font-size:11.5px;direction:rtl}
+.gps-lx-nd{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:62px}
+.gps-item .gps-dist{padding:0;background:none;font-size:16px;font-weight:900;color:var(--lx-gold-hi);font-variant-numeric:tabular-nums}
+.gps-item .gps-dir{font-size:11.5px;font-weight:800;color:var(--text-dim);white-space:nowrap}
+.gps-item .gps-dir:empty{display:none}
+.gps-acts{display:flex;gap:6px;flex:0 0 100%;justify-content:flex-start;padding-top:8px;border-top:1px dashed rgba(255,255,255,.07)}
+.gps-act{width:auto;height:40px;min-width:44px;padding:0 12px;border-radius:999px;gap:6px;font-size:0;
+  color:var(--text);background:rgba(5,8,16,.55);border:1px solid var(--lx-line)}
+.gps-act::before{width:18px;height:18px}
+.gps-act[data-ed]::before{--i:var(--i-edit);color:var(--lx-gold)}
+.gps-act[data-del]::before{--i:var(--i-trash);color:var(--lx-bad)}
+.gps-act[data-ed]::after{content:"تعديل";font-size:13px;font-weight:800}
+.gps-act[data-del]::after{content:"حذف";font-size:13px;font-weight:800;color:#ffb4aa}
+.gps-goi{flex:1;color:#1f1500;background:var(--lx-gold-grad);border:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
+.gps-goi::before{--i:var(--i-nav);color:#1f1500}
+.gps-goi::after{content:"توجّه إليها";font-size:13.5px;font-weight:900}
+.gps-empty{padding:18px 10px;border-radius:var(--lx-r);background:rgba(13,20,36,.6);border:1px dashed var(--lx-line);font-size:13.5px;line-height:1.9}
+
+/* البحث */
+#gpsGo{gap:6px}
+#gpsGo::before{--i:var(--i-search);width:18px;height:18px}
+#gpsRes .gps-item{cursor:pointer}
+
+/* بطاقات الأذونات */
+.gps-perm{
+  position:relative;padding:12px 14px 12px;margin-bottom:10px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,var(--lx-navy-3),var(--lx-navy));border:1px solid var(--lx-line);
+  border-inline-start:4px solid var(--lx-warn);box-shadow:var(--lx-shadow);
+}
+.gps-perm.bad{border-color:rgba(255,107,91,.45);border-inline-start-color:var(--lx-bad);background:linear-gradient(170deg,rgba(255,107,91,.12),var(--lx-navy) 70%)}
+.gps-perm.warn{border-color:rgba(240,176,60,.4);border-inline-start-color:var(--lx-warn);background:linear-gradient(170deg,rgba(240,176,60,.11),var(--lx-navy) 70%)}
+.gps-perm-h{font-size:15px}
+.gps-perm p{margin:4px 0 0;font-size:13px;line-height:1.75}
+
+/* =========================== الحالة =========================== */
+.gps-sec{
+  position:relative;padding:12px 14px 10px;margin-bottom:10px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,var(--lx-navy-3) 0%,var(--lx-navy) 100%);
+  border:1px solid var(--lx-line);border-inline-start:4px solid var(--lx-line);box-shadow:var(--lx-shadow);
+}
+.gps-sec:has(.gps-badge.ok){border-inline-start-color:var(--lx-ok)}
+.gps-sec:has(.gps-badge.warn){border-inline-start-color:var(--lx-warn)}
+.gps-sec:has(.gps-badge.bad){border-inline-start-color:var(--lx-bad)}
+.gps-sec h5{margin:0 0 4px;font-size:15px;color:var(--lx-gold-hi)}
+.gps-kv{align-items:center;padding:8px 0;font-size:13.5px;border-bottom:1px dashed rgba(255,255,255,.08)}
+.gps-kv>b{font-weight:800}
+.gps-badge{padding:3px 11px;font-size:12px;border:1px solid transparent}
+.gps-badge.ok{background:rgba(52,199,123,.15);color:#5fe09b;border-color:rgba(52,199,123,.35)}
+.gps-badge.warn{background:rgba(240,176,60,.15);color:#ffc95e;border-color:rgba(240,176,60,.35)}
+.gps-badge.bad{background:rgba(255,107,91,.15);color:#ff8f82;border-color:rgba(255,107,91,.4)}
+.gps-badge.ok::before,.gps-badge.warn::before,.gps-badge.bad::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-inline-end:6px;vertical-align:middle}
+.gps-tgl{min-height:50px;padding:10px 2px;font-size:14px;border-bottom:1px dashed rgba(255,255,255,.08)}
+.gps-tgl i{width:46px;height:27px;background:#2a3655}
+.gps-tgl i:after{width:21px;height:21px;box-shadow:0 2px 5px rgba(0,0,0,.4)}
+.gps-tgl[aria-checked="true"] i{background:var(--lx-gold-grad)}
+.gps-tgl[aria-checked="true"] i:after{right:22px}
+.gps-bars u{width:5px}
+#gpsBody>.btn[data-act="diag"]{margin-bottom:8px}
+
+/* =========================== نوافذ وإشعارات =========================== */
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(var(--lx-nav-h) + 22px + env(safe-area-inset-bottom));
+  z-index:1400;max-width:88vw;padding:11px 20px;border-radius:999px;text-align:center;
+  font-size:13.5px;font-weight:800;color:#1f1500;background:var(--lx-gold-grad);
+  box-shadow:0 14px 30px -8px rgba(0,0,0,.8);opacity:0;pointer-events:none;transition:opacity .2s,transform .25s var(--lx-ease)
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.backdrop{position:fixed;inset:0;z-index:1000;display:none;align-items:flex-end;justify-content:center;padding:14px;background:rgba(2,4,10,.66);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.backdrop.active{display:flex;animation:lxFade .2s ease}
+@keyframes lxFade{from{opacity:0}to{opacity:1}}
+.box{
+  width:100%;max-width:480px;max-height:85vh;overflow:auto;padding:18px;margin-bottom:env(safe-area-inset-bottom);
+  border-radius:26px;color:var(--text);
+  background:linear-gradient(170deg,#18223a,#0b1120);border:1px solid var(--lx-gold-line);box-shadow:0 30px 60px -10px rgba(0,0,0,.9);
+  animation:lxUp .28s var(--lx-ease)
+}
+@keyframes lxUp{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+.box h3{margin:0 0 10px;font-size:18px;color:var(--lx-gold-hi)}
+.box p,.box li{line-height:1.75;font-size:14.5px}
+.box ol{padding-inline-start:22px;margin:8px 0}
+.box .row{margin-top:14px}
+@media (min-width:600px){.backdrop{align-items:center}}
+
+/* =========================== مقاسات الشاشات =========================== */
+@media (max-width:360px){
+  #funToolBody{padding-inline:9px}
+  .gps-far{font-size:34px}
+  .gps-cell b{font-size:16px}
+  #gpsBody>.gps-row:has(#gpsPark) .btn,#gpsBody>.gps-row:has(#gpsShare) .btn{font-size:11px;min-height:64px}
+  #funToolTitle .gbs-en{font-size:19px !important}
+  #funToolTitle .gbs-ar{font-size:18px !important}
+}
+@media (max-height:700px){
+  .gps-dial svg{width:min(100%,56vh)}
+  .gps-far{font-size:34px}
+  .gps-sub{min-height:2.8em;font-size:13px}
+}
+@media (min-width:600px){
+  #gpsFrame .gps-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
