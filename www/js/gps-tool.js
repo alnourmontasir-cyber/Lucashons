@@ -485,7 +485,7 @@
                     S.perm = Object.assign({}, S.perm, { state: 'granted' });
                 S.lowSince = acc > 1500 ? (S.lowSince || now) : 0;
                 /* السرعة والمسار: من الحساس إن وُجد، وإلا من الإزاحة بين قراءتين */
-                let sp = (fin(c.speed) && c.speed >= 0) ? c.speed : null;
+                let sp = (fin(c.speed) && c.speed >= 0 && c.speed <= 97) ? c.speed : null;
                 let hd = (fin(c.heading) && c.heading >= 0) ? c.heading : null;
                 const pp = S.prevPos;
                 if (!pp) {
@@ -493,14 +493,22 @@
                 }
                 else {
                     const dt = (ts - pp.t) / 1000;
-                    if (dt >= 1) {
+                    /* [إصلاح السفر] قراءة شبكة تقريبية (±مئات الأمتار) بعد العودة من الخلفية كانت تُحسب منها سرعة خيالية (مثل 754 كم/س)
+                       واتجاه خاطئ يلوّث معايرة البوصلة. الآن: لا نشتق السرعة/المسار إلا بين قراءتين موثوقتين (≤50 م)،
+                       ونرفض أي سرعة فوق 350 كم/س */
+                    if (acc > 50 || pp.acc > 50) {
+                        S.prevPos = { lat: la, lng: lo, t: ts, acc: acc };
+                    }
+                    else if (dt >= 1) {
                         const g = GEO.geodesic(pp.lat, pp.lng, la, lo), thr = Math.max(4, 0.5 * Math.max(acc, pp.acc));
                         if (g.m >= thr) {
                             const v = g.m / dt;
-                            if (sp == null)
-                                sp = v;
-                            if (hd == null && v >= 1)
-                                hd = g.brg;
+                            if (v <= 97) {
+                                if (sp == null)
+                                    sp = v;
+                                if (hd == null && v >= 1)
+                                    hd = g.brg;
+                            }
                             S.prevPos = { lat: la, lng: lo, t: ts, acc: acc };
                         }
                         else if (dt >= 4) {
@@ -572,6 +580,27 @@
             }
             catch (e) { } S.wl = null; }
             function onVis() {
+                if (document.visibilityState !== 'visible') {
+                    S.hidAt = Date.now();
+                    return;
+                }
+                /* [إصلاح السفر] بعد الغياب في الخلفية: السرعة والمسار ونقطة الاشتقاق والفلتر كلها من موقع قديم بعيد.
+                   نبدأ نظيفًا حتى لا تُخلط قراءات ما قبل الخروج بما بعده، ولا تُعرض قيم قديمة على أنها مباشرة */
+                if (S.hidAt && Date.now() - S.hidAt > 3000) {
+                    S.prevPos = null;
+                    S.spd = null;
+                    S.course = null;
+                    S.sh = null;
+                    if (S.flt)
+                        S.flt.reset();
+                    /* الحساس النسبي يُعاد ضبط صفره عند الاستئناف في بعض الأجهزة → نعيد المعايرة من الحركة */
+                    if (S.rel) {
+                        S.off = 0;
+                        S.offN = 0;
+                    }
+                    S.resumed = Date.now();
+                }
+                S.hidAt = 0;
                 if (document.visibilityState === 'visible') {
                     S.wl = null;
                     S.lastAuto = 0;
@@ -1022,9 +1051,11 @@
                 return '<div class="gps-loc"><i class="gps-dot" id="gpsLocDot"></i><span id="gpsLocTxt"></span><span class="gps-age" id="gpsLocAge" hidden></span></div>' + dialHTML()
                     + '<div class="gps-grid">'
                     + '<div class="gps-cell"><small>دقة الموقع</small><b id="gpsAcc">—</b></div>'
-                    + '<div class="gps-cell"><small>اتجاه الهاتف</small><b id="gpsHdg">—</b></div>'
+                    + '<div class="gps-cell"><small>جودة الإشارة</small><b id="gpsSig">—</b></div>'
+                    + '<div class="gps-cell"><small>السرعة</small><b id="gpsSpd">—</b></div>'
                     + '<div class="gps-cell"><small>الارتفاع</small><b id="gpsAlt">—</b></div>'
-                    + '<div class="gps-cell"><small>السرعة</small><b id="gpsSpd">—</b></div></div>'
+                    + '<div class="gps-cell"><small>اتجاه الهاتف</small><b id="gpsHdg">—</b></div>'
+                    + '<div class="gps-cell gps-crd"><small>الإحداثيات</small><b><span id="gpsLat">—</span><span id="gpsLng"></span></b></div></div>'
                     + '<div class="gps-row"><button type="button" class="btn btn-ghost" id="gpsPark" disabled>موقف سيارتي</button><button type="button" class="btn btn-ghost" id="gpsCopy" disabled>نسخ الإحداثيات</button></div>'
                     + '<div class="gps-row"><button type="button" class="btn btn-ghost" id="gpsShare" disabled>مشاركة موقعي</button><button type="button" class="btn btn-ghost" id="gpsMaps" disabled>فتحه في الخرائط</button></div>'
                     + '<p class="gps-note">«حفظ الموقع الحالي» و«موقف سيارتي» يجمعان عدة قراءات لثوانٍ ويحسبان متوسطها المرجّح بالدقة، فيكون المكان المحفوظ أدق من قراءة واحدة.</p>';
@@ -1085,6 +1116,7 @@
                 });
                 if (!ok)
                     return;
+                const stale = markStale();
                 const c = S.pos.coords;
                 setTxt('gpsLat', fmtCoord(c.latitude, true));
                 setTxt('gpsLng', fmtCoord(c.longitude, false));
@@ -1092,12 +1124,34 @@
                 setTxt('gpsAcc', '±' + Math.round(c.accuracy) + ' م — ' + qq.t);
                 setTxt('gpsAlt', fin(c.altitude) ? Math.round(c.altitude) + ' م' + (fin(c.altitudeAccuracy) && c.altitudeAccuracy > 0 ? ' (±' + Math.round(c.altitudeAccuracy) + ')' : '') : '—');
                 const sp = S.spd != null ? S.spd : (fin(c.speed) ? c.speed : null);
-                setTxt('gpsSpd', sp != null ? (sp * 3.6 < 1 ? '0 كم/س' : Math.round(sp * 3.6) + ' كم/س') : '—');
+                /* [إصلاح] لا نعرض سرعة قديمة كأنها مباشرة */
+                setTxt('gpsSpd', stale ? '—' : (sp != null ? (sp * 3.6 < 1 ? '0 كم/س' : Math.round(sp * 3.6) + ' كم/س') : '—'));
+                /* جودة الإشارة: من الدقة الحالية وعمر آخر قراءة (المتصفح لا يعطي عدد الأقمار) */
+                const nb = stale ? 0 : (c.accuracy <= 10 ? 4 : (c.accuracy <= 25 ? 3 : (c.accuracy <= 60 ? 2 : 1)));
+                const sc = nb >= 3 ? 'ok' : (nb === 2 ? 'warn' : 'bad');
+                let bh = '';
+                for (let i = 1; i <= 4; i++)
+                    bh += '<u' + (i <= nb ? ' class="on"' : '') + '></u>';
+                setHTML('gpsSig', '<span class="gps-bars ' + sc + '">' + bh + '</span> ' + (stale ? 'بانتظار إشارة' : ['', 'ضعيفة', 'متوسطة', 'جيدة', 'ممتازة'][nb]));
                 updHdg();
+            }
+            /* [إصلاح] الموقع قديم؟ (لا قراءة منذ 6 ثوانٍ: بعد العودة من الخلفية، نفق، إشارة ضعيفة) → نعلّم الواجهة بدل عرضه كمباشر */
+            function markStale() {
+                const stale = !S.fix || Date.now() - S.fix > 6000;
+                const fr = $('gpsFrame');
+                if (fr)
+                    fr.classList.toggle('gps-stale', stale);
+                if (stale) {
+                    setTxt('gpsSpd', '—');
+                    const sg = $('gpsSig');
+                    if (sg && sg.textContent.indexOf('بانتظار') < 0)
+                        setHTML('gpsSig', '<span class="gps-bars bad"><u></u><u></u><u></u><u></u></span> بانتظار إشارة');
+                }
+                return stale;
             }
             function updHdg() {
                 const hh = curHeading();
-                setTxt('gpsHdg', hh ? Math.round(hh.h) + '° ' + dirLbl(hh.h) : '—');
+                setTxt('gpsHdg', hh ? (Math.round(hh.h) % 360) + '° ' + dirLbl(hh.h) : '—');
             }
             /* ---------- تبويب: الوجهات ---------- */
             function destHTML() {
@@ -1608,7 +1662,7 @@
                     S.navDest = null;
                     ar.style.opacity = '1';
                     setAng('gpsArrow', -h);
-                    const t1 = hh ? (Math.round(h) + '° ' + dirLbl(h)) : '—';
+                    const t1 = hh ? ((Math.round(h) % 360) + '° ' + dirLbl(h)) : '—';
                     if (far.textContent !== t1)
                         far.textContent = t1;
                     const h0 = 'لم تختر وجهة — السهم يشير إلى الشمال.<br>اختر وجهة من «الوجهات» ليشير إليها السهم.'
@@ -1662,7 +1716,7 @@
                 else {
                     if (m > near * 3)
                         S.arrived = false;
-                    lines.push('الوجهة باتجاه ' + Math.round(b) + '° ' + dirLbl(b));
+                    lines.push('الوجهة باتجاه ' + (Math.round(b) % 360) + '° ' + dirLbl(b));
                     lines.push(etaTxt(m));
                     if (S.pos.coords.accuracy > m * 0.5 && m < 300)
                         lines.push('<span style="color:#ffcf6b">دقة الإشارة (±' + Math.round(S.pos.coords.accuracy) + ' م) قريبة من المسافة — الاتجاه تقريبي حتى تتحسّن.</span>');
@@ -1734,8 +1788,10 @@
                     updInfo();
                 else if (S.tab === 'home') {
                     paintPerm();
-                    if (S.pos)
+                    if (S.pos) {
                         updNav();
+                        markStale();
+                    }
                 }
                 /* إعادة محاولة تلقائية: بعد تفعيل الإذن أو الموقع من إعدادات الهاتف يبدأ التتبّع دون ضغط الزر */
                 {

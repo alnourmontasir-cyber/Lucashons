@@ -4,8 +4,26 @@
     var F = window.FUN;
     var $ = function (id) { return document.getElementById(id); };
 
-    /* فتح الأداة مباشرة */
-    F.open('gps');
+    /* فتح الأداة مباشرة — مع إبلاغ حارس التشغيل بالنجاح أو الفشل (لا شاشة فارغة أبدًا) */
+    try {
+        F.open('gps');
+    } catch (e) {
+        console.error(e);
+    }
+    if ($('gpsBody')) {
+        if (window.__bootDone) window.__bootDone();
+    } else if (window.__bootFail) {
+        window.__bootFail('لم تُرسم الأداة');
+    }
+    /* عند العودة من الخلفية: لو فقد WebView المحتوى لأي سبب نعيد رسم الأداة (البيانات محفوظة في التخزين) */
+    function ensureAlive() {
+        if (document.visibilityState !== 'visible') return;
+        if (!$('gpsBody')) {
+            try { F.open('gps'); } catch (e) { console.error(e); }
+        }
+    }
+    document.addEventListener('visibilitychange', ensureAlive);
+    window.addEventListener('pageshow', ensureAlive);
 
     /* ---------- دليل الاستخدام (زر «؟») ---------- */
     function showGuide() {
