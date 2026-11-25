@@ -1,8 +1,9 @@
 /* عامل الخدمة: يخزّن ملفات التطبيق ليعمل بدون إنترنت. البحث بالاسم (nominatim) يبقى عبر الشبكة دائمًا. */
-const CACHE = 'gbs-v1';
+const CACHE = 'gbs-v2';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
-  'js/shim.js', 'js/geo.js', 'js/gps-tool.js', 'js/app.js',
+  'css/luxe.css',
+  'js/shim.js', 'js/geo.js', 'js/gps-tool.js', 'js/luxe.js', 'js/app.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
 ];
 self.addEventListener('install', e => {
@@ -15,7 +16,15 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (e.request.method !== 'GET') return;
+  /* الخطوط من Google: تُخزَّن بعد أول تحميل لتعمل بدون إنترنت */
+  if (/^fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      const cp = res.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return res;
+    })));
+    return;
+  }
+  if (url.origin !== location.origin) return;
   /* الشبكة أولًا (لتصلك التحديثات)، ثم النسخة المخزّنة عند انقطاع الإنترنت */
   e.respondWith(
     fetch(e.request).then(r => {
