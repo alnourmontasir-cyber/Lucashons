@@ -15,7 +15,8 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cinzel:wght@700;900&family=Amiri:wght@700&display=swap">
+<!-- [إصلاح الشاشة السوداء] الخطوط تُحمَّل دون أن تمنع رسم الصفحة: كانت الصفحة لا تظهر أبدًا إذا كان الإنترنت ضعيفًا -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cinzel:wght@700;900&family=Amiri:wght@700&display=swap" media="print" onload="this.media='all'">
 <title>GBS المنتصر</title>
 <!-- الأساس: ألوان الهوية (ذهبي / أسود / كحلي). باقي التصميم في css/luxe.css -->
 <style>
@@ -32,9 +33,65 @@ button,input,textarea,select{font-family:inherit;font-weight:inherit}
 button{border:0;background:none;color:inherit;cursor:pointer}
 input,textarea,select{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px}
 [hidden]{display:none !important}
+/* شاشة التشغيل: تظهر فورًا، وتختفي بعد رسم الأداة، وتعرض «إعادة المحاولة» إن فشل شيء */
+#boot{position:fixed;inset:0;z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;
+  background:radial-gradient(90% 60% at 50% 35%,rgba(242,183,5,.14),transparent 60%),#070a12;transition:opacity .35s}
+#boot.gone{opacity:0;pointer-events:none}
+#boot .b-logo{font:900 34px/1.2 "Cinzel",Georgia,serif;letter-spacing:.16em;color:#ffd84a;text-shadow:0 0 22px rgba(242,183,5,.4)}
+#boot .b-logo span{display:block;font:700 26px/1.4 "Amiri","Noto Naskh Arabic",serif;letter-spacing:0}
+#boot .b-spin{width:46px;height:46px;border-radius:50%;border:3px solid rgba(242,183,5,.18);border-top-color:#f2b705;animation:bspin .9s linear infinite}
+@keyframes bspin{to{transform:rotate(360deg)}}
+#boot p{margin:0;color:#c9c0a0;font-size:14px;line-height:1.8;max-width:340px}
+#boot button{min-height:48px;padding:10px 22px;border-radius:999px;font-size:15px;font-weight:800;margin:4px}
+#bootRetry{color:#1f1500;background:linear-gradient(180deg,#ffe58a,#f7c51e 45%,#d99a00)}
+#bootClear{color:#f4efe1;background:#131d31;border:1px solid #223050 !important}
+#bootErr small{display:block;margin-top:8px;color:#7d879c;font-size:11px;direction:ltr;word-break:break-all}
 </style>
 </head>
 <body>
+<div id="boot" role="status" aria-live="polite">
+  <div class="b-logo">GBS<span>المنتصر</span></div>
+  <div class="b-spin" id="bootSpin"></div>
+  <p id="bootMsg">جارٍ التشغيل…</p>
+  <div id="bootErr" hidden>
+    <p>تعذّر تشغيل التطبيق هذه المرة. بياناتك ووجهاتك محفوظة ولن تُحذف.</p>
+    <div><button type="button" id="bootRetry">إعادة المحاولة</button><button type="button" id="bootClear">تحديث الملفات وإعادة التشغيل</button></div>
+    <small id="bootErrTxt"></small>
+  </div>
+</div>
+<script>
+/* حارس التشغيل: يلتقط أخطاء التحميل ويمنع بقاء الشاشة فارغة */
+(function () {
+  var errs = [], done = false;
+  window.__bootErrs = errs;
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t !== window && (t.src || t.href)) errs.push('تعذّر تحميل: ' + String(t.src || t.href).split('/').slice(-2).join('/'));
+    else errs.push((e.message || 'خطأ') + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  }, true);
+  function $(i) { return document.getElementById(i); }
+  window.__bootDone = function () {
+    if (done) return; done = true;
+    var b = $('boot'); if (!b) return;
+    b.classList.add('gone'); setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 450);
+  };
+  window.__bootFail = function (why) {
+    if (done) return;
+    if (why) errs.push(why);
+    $('bootSpin').hidden = true; $('bootMsg').hidden = true; $('bootErr').hidden = false;
+    $('bootErrTxt').textContent = errs.slice(-3).join(' | ');
+  };
+  $('bootRetry').onclick = function () { location.reload(); };
+  $('bootClear').onclick = function () {
+    var jobs = [];
+    try { if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (r) { return Promise.all(r.map(function (x) { return x.unregister(); })); })); } catch (e) {}
+    try { if (window.caches) jobs.push(caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); })); } catch (e) {}
+    Promise.all(jobs).catch(function () {}).then(function () { location.reload(); });
+  };
+  /* إن لم تُرسم الأداة خلال 10 ثوانٍ نعرض الخيارات بدل شاشة فارغة */
+  setTimeout(function () { if ($('gpsBody')) window.__bootDone(); else window.__bootFail('انتهت مهلة التشغيل'); }, 10000);
+})();
+</script>
 <div id="funToolBackdrop" class="active">
   <header class="app-bar">
     <h1 id="funToolTitle">GBS</h1>

@@ -1,5 +1,5 @@
 /* عامل الخدمة: يخزّن ملفات التطبيق ليعمل بدون إنترنت. البحث بالاسم (nominatim) يبقى عبر الشبكة دائمًا. */
-const CACHE = 'gbs-v2';
+const CACHE = 'gbs-v3';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/luxe.css',
@@ -25,11 +25,13 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.origin !== location.origin) return;
-  /* الشبكة أولًا (لتصلك التحديثات)، ثم النسخة المخزّنة عند انقطاع الإنترنت */
-  e.respondWith(
-    fetch(e.request).then(r => {
-      if (r && r.ok) { const cp = r.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); }
-      return r;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
-  );
+  /* [إصلاح الشاشة السوداء] كان «الشبكة أولًا» بلا مهلة: مع إنترنت ضعيف تبقى الصفحة فارغة حتى يفشل الطلب.
+     الآن: النسخة المخزّنة فورًا، والتحديث من الشبكة في الخلفية (يظهر في الفتح التالي).
+     أول تشغيل (لا نسخة مخزّنة): الشبكة مع مهلة 8 ثوانٍ */
+  e.respondWith(caches.open(CACHE).then(c => c.match(e.request, { ignoreSearch: true }).then(hit => {
+    const net = fetch(e.request).then(r => { if (r && r.ok) c.put(e.request, r.clone()); return r; });
+    if (hit) { net.catch(() => {}); return hit; }
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+    return Promise.race([net, timeout]).catch(() => (e.request.mode === 'navigate' ? c.match('index.html') : Promise.resolve(null)).then(r => r || Response.error()));
+  })));
 });
