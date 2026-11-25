@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f2f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
+<meta name="description" content="سهم يدلّك على أي وجهة مع المسافة — يعمل بدون إنترنت">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GBS">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>GBS المنتصر</title>
+<style>
+:root{
+  --bg:#f2f4f8;--bg-elev:#ffffff;--surface:#ffffff;--surface-2:#eef1f6;--border:#d3d9e3;
+  --text:#141a26;--text-dim:#4d576a;--gold:#946600;--on-gold:#ffffff;--danger:#c65a4d;
+  --radius-sm:10px;--shadow:0 6px 20px rgba(16,24,40,.14);--font-scale:1.18;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1420;--bg-elev:#1a2131;--surface:#1a2131;--surface-2:#232c3f;--border:#34405a;
+    --text:#eef1f7;--text-dim:#a6b0c3;--gold:#f2b705;--on-gold:#1f1500;--danger:#e0786b;
+    --shadow:0 6px 20px rgba(0,0,0,.45);color-scheme:dark;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;overscroll-behavior:none}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;
+  font-size:calc(15px * var(--font-scale));font-weight:500;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+button,input,textarea,select{font-family:inherit;font-weight:inherit}
+button{border:0;background:none;color:inherit;cursor:pointer}
+input,textarea,select{
+  width:100%;background:var(--surface-2);color:var(--text);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:12px 14px;font-size:calc(15px * var(--font-scale));
+}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px}
+textarea{min-height:110px;resize:vertical}
+.btn{flex:1;padding:13px;border-radius:16px;font-size:calc(14px * var(--font-scale));font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.45}
+.btn-primary{background:linear-gradient(135deg,#FFB347 0%,#F2711C 100%);color:#fff;text-shadow:0 1px 2px rgba(120,45,0,.4)}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.hint{color:var(--text-dim);font-size:calc(12px * var(--font-scale))}
+.row{display:flex;gap:10px}
+
+/* الإطار الرئيسي */
+.app-bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+#funToolTitle{flex:1;margin:0;font-size:calc(19px * var(--font-scale));font-weight:900;min-width:0}
+.icon-btn{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);font-size:18px;flex-shrink:0}
+.icon-btn[hidden]{display:none}
+#funToolBody{padding:12px 14px 28px}
+
+/* إشعار */
+.toast{position:fixed;bottom:calc(25px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:1400;padding:11px 20px;border-radius:30px;background:rgba(15,23,42,.9);color:#fff;box-shadow:var(--shadow);font-size:calc(13px * var(--font-scale));opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.show{opacity:1}
+
+/* نوافذ */
+.backdrop{position:fixed;inset:0;z-index:1000;background:rgba(5,10,20,.5);display:none;align-items:flex-end;justify-content:center;padding:16px}
+.backdrop.active{display:flex}
+.box{width:100%;max-width:480px;background:var(--surface);color:var(--text);border-radius:22px;padding:18px;box-shadow:var(--shadow);max-height:85vh;overflow:auto;margin-bottom:env(safe-area-inset-bottom)}
+.box h3{margin:0 0 10px;font-size:calc(17px * var(--font-scale))}
+.box p,.box li{line-height:1.7}
+.box ol{padding-inline-start:22px}
+.box .row{margin-top:14px}
+@media (min-width:600px){.backdrop{align-items:center}}
+@media (prefers-color-scheme: dark){
+  .gps-add{background:var(--surface-2) !important;color:var(--text) !important}
+  .gps-add small{color:var(--text-dim) !important}
+}
+</style>
+</head>
+<body>
+<div id="funToolBackdrop" class="active">
+  <header class="app-bar">
+    <h1 id="funToolTitle">GBS</h1>
+    <button type="button" class="icon-btn" id="btnInstall" hidden title="تثبيت التطبيق" aria-label="تثبيت التطبيق">📲</button>
+    <button type="button" class="icon-btn" id="btnBackup" title="النسخ الاحتياطي" aria-label="النسخ الاحتياطي">💾</button>
+    <button type="button" class="icon-btn" id="btnHelp" title="طريقة الاستخدام" aria-label="طريقة الاستخدام">؟</button>
+  </header>
+  <main id="funToolBody"></main>
+</div>
+
+<div class="backdrop" id="sheetBackdrop" role="dialog" aria-modal="true">
+  <div class="box">
+    <h3 id="sheetTitle"></h3>
+    <div id="sheetBody"></div>
+    <div class="row"><button type="button" class="btn btn-ghost" id="sheetClose">إغلاق</button></div>
+  </div>
+</div>
+
+<div class="backdrop" id="confirmBackdrop" role="alertdialog" aria-modal="true">
+  <div class="box">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmMsg"></p>
+    <div class="row">
+      <button type="button" class="btn btn-ghost" onclick="closeConfirm(false)">إلغاء</button>
+      <button type="button" class="btn btn-primary" onclick="closeConfirm(true)">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="bkFile" accept="application/json,.json" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="js/shim.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/gps-tool.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
