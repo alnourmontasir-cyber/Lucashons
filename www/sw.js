@@ -1,5 +1,5 @@
 /* عامل الخدمة: يخزّن ملفات التطبيق ليعمل بدون إنترنت. البحث بالاسم (nominatim) يبقى عبر الشبكة دائمًا. */
-const CACHE = 'gbs-v3';
+const CACHE = 'gbs-v4';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/luxe.css',
