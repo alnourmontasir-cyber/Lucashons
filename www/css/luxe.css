@@ -57,6 +57,7 @@ body{
   --i-nav:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'><path d='M12 3l7 18-7-4.2L5 21z' fill='black'/></svg>");
   --i-mountain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2.5 20l6.5-11 4 6.5 2.5-3.5 6 8z'/></svg>");
   --i-gauge:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'><path d='M3.5 17a8.5 8.5 0 1 1 17 0'/><path d='M12 17l4.5-5.5'/><circle cx='12' cy='17' r='1.4' fill='black'/></svg>");
+  --i-sat:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M13 7l4 4-6 6-4-4z'/><path d='M15 5l2-2 4 4-2 2M9 19l-2 2-4-4 2-2'/><path d='M19 15a4 4 0 0 1-4 4M21 15a6 6 0 0 1-6 6'/></svg>");
   --i-flag:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 21V4'/><path d='M5 4h11l-2 4 2 4H5'/></svg>");
   --i-swap:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7 4L3 8l4 4'/><path d='M3 8h14'/><path d='M17 20l4-4-4-4'/><path d='M21 16H7'/></svg>");
   --i-stop:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'><circle cx='12' cy='12' r='9'/><rect x='8.5' y='8.5' width='7' height='7' rx='1.2' fill='black'/></svg>");
@@ -217,6 +218,17 @@ body{
 .gps-cell:has(#gpsHdg) small::before{--i:var(--i-nav)}
 .gps-cell:has(#gpsAlt) small::before{--i:var(--i-mountain)}
 .gps-cell:has(#gpsSpd) small::before{--i:var(--i-gauge)}
+.gps-cell:has(#gpsSig) small::before{--i:var(--i-sat)}
+.gps-cell.gps-crd small::before{--i:var(--i-pin)}
+/* الإحداثيات: سطران (عرض/طول) بخط ثابت العرض */
+.gps-crd b{display:flex;flex-direction:column;gap:1px;font-size:14px !important;direction:ltr;text-align:right;white-space:normal !important}
+.gps-crd b span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gpsSig .gps-bars{margin:0 0 0 4px;height:15px}
+#gpsSig .gps-bars u{width:5px}
+#gpsSig{font-size:16px}
+/* بيانات قديمة (لا قراءة منذ 6 ثوانٍ): تُعتّم بوضوح ولا تبدو مباشرة */
+#gpsFrame.gps-stale .gps-far,#gpsFrame.gps-stale .gps-cell b:not(#gpsHdg):not(#gpsSig){opacity:.42;filter:grayscale(.6)}
+#gpsFrame.gps-stale .gps-cell:has(#gpsSig){border-color:rgba(255,107,91,.45)}
 .gps-cell b{font-size:18px;font-weight:900;line-height:1.25;word-break:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text)}
 
 /* زر الحفظ الرئيسي */
@@ -421,5 +433,5 @@ body{
   .gps-sub{min-height:2.8em;font-size:13px}
 }
 @media (min-width:600px){
-  #gpsFrame .gps-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #gpsFrame .gps-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
