@@ -1,0 +1,8 @@
+{
+  "appId": "com.almuntasir.gbs",
+  "appName": "GBS المنتصر",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}

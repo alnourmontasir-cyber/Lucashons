@@ -1,0 +1,23 @@
+{
+  "name": "gbs-arrow-navigator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GBS المنتصر — سهم الوجهة: أداة الموقع الجغرافي كتطبيق مستقل (PWA + أندرويد عبر Capacitor)",
+  "scripts": {
+    "serve": "npx --yes http-server www -p 8080 -c-1",
+    "android:add": "npx cap add android && node scripts/patch-android.js",
+    "android:icons": "npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#f2b705'",
+    "sync": "npx cap sync android",
+    "apk": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/geolocation": "^6.1.0",
+    "@capacitor/share": "^6.0.3",
+    "capacitor-native-settings": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}
