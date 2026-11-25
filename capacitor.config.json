@@ -3,6 +3,8 @@
   "appName": "GBS المنتصر",
   "webDir": "www",
   "android": {
-    "allowMixedContent": false
-  }
+    "allowMixedContent": false,
+    "backgroundColor": "#070a12"
+  },
+  "backgroundColor": "#070a12"
 }
