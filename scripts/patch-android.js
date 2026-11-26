@@ -10,6 +10,11 @@ let xml = fs.readFileSync(file, 'utf8');
 const lines = [
   '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
   '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+  /* تسجيل الرحلة في الخلفية: خدمة موقع أمامية بإشعار (Android 14+ يتطلب نوع الخدمة location) */
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />',
+  '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+  '<uses-permission android:name="android.permission.WAKE_LOCK" />',
   '<uses-feature android:name="android.hardware.location.gps" android:required="false" />'
 ].filter(l => !xml.includes(l.match(/name="([^"]+)"/)[1]));
 if (lines.length) {
@@ -27,7 +32,8 @@ const resDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res'
 try {
   fs.mkdirSync(resDir, { recursive: true });
   fs.writeFileSync(path.join(resDir, 'gbs_colors.xml'),
-    '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="gbs_bg">#070a12</color>\n</resources>\n');
+    '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="gbs_bg">#070a12</color>\n'
+    + '    <string name="capacitor_background_geolocation_notification_channel_name">تسجيل الرحلة</string>\n</resources>\n');
   const stylesFile = path.join(resDir, 'styles.xml');
   if (fs.existsSync(stylesFile)) {
     let st = fs.readFileSync(stylesFile, 'utf8');
