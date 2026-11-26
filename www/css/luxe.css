@@ -40,7 +40,7 @@ body{
 .lx-i,.icon-btn::before,.gps-tab::before,
 #gpsPark::before,#gpsCopy::before,#gpsShare::before,#gpsMaps::before,
 .gps-cell small::before,#gpsPickGo::before,#gpsChange::before,#gpsStop::before,
-#gpsGo::before,.gps-goi::before,.gps-act[data-ed]::before,.gps-act[data-del]::before,.gps-cp::before{
+#gpsGo::before,.gps-goi::before,.gps-act[data-ed]::before,.gps-act[data-del]::before,.gps-cp::before,.gps-act[data-cp]::before{
   content:"";display:inline-block;flex-shrink:0;
   width:20px;height:20px;background:currentColor;
   -webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;
@@ -575,3 +575,109 @@ html.lx-desert-on,html.lx-desert-on body{overflow:hidden}
 .dz-bot button{min-height:64px;font-size:16px}
 .dz-shade{position:fixed;inset:0;background:#000;pointer-events:none;opacity:0}
 @media (min-width:700px){.dz-grid{grid-template-columns:repeat(3,1fr)}}
+
+/* ======================================================================
+   لوحة البوصلة الذكية + شاشة الوجهات المضغوطة
+   ====================================================================== */
+.gps-panel.lx-dash{padding:10px 10px 10px}
+.lx-dash .gps-dst{margin-bottom:0}
+.lx-mid{position:relative;display:flex;justify-content:center;align-items:center;padding:18px 46px;min-height:230px}
+.lx-dash .gps-dial{margin:0;width:100%;display:flex;justify-content:center;transition:width .25s var(--lx-ease)}
+.lx-dash .gps-dial svg{width:100%;max-width:min(58vh,440px);filter:drop-shadow(0 10px 22px rgba(0,0,0,.6))}
+.lx-mid.lx-z2 .gps-dial{width:86%}
+.lx-mid.lx-z3 .gps-dial{width:72%}
+/* معلومات الزوايا: في الفراغ بين الدائرة وحواف المربع */
+.lx-k{position:absolute;z-index:2;max-width:34%;display:flex;flex-direction:column;gap:1px;pointer-events:none}
+.lx-k.k1{top:0;inset-inline-start:0;align-items:flex-start;text-align:start}
+.lx-k.k2{top:0;inset-inline-end:0;align-items:flex-end;text-align:end}
+.lx-k.k3{bottom:0;inset-inline-start:0;align-items:flex-start;text-align:start}
+.lx-k.k4{bottom:0;inset-inline-end:0;align-items:flex-end;text-align:end}
+.lx-k small,.lx-k .gps-cell small{display:block;font-size:11px;font-weight:700;color:#b9b19a;line-height:1.3}
+.lx-k b,.lx-k .gps-cell b{display:block;font-size:15px;font-weight:900;color:var(--lx-gold-hi);line-height:1.25;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.lx-k.k2 .gps-cell b{font-size:18px}
+.lx-k .gps-cell{all:unset;display:block}
+.lx-k .gps-cell::after{display:none}
+/* أزرار التحكم على جانبي الدائرة */
+.lx-rail{position:absolute;top:50%;transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;gap:4px}
+.lx-rail.r1{inset-inline-start:0}
+.lx-rail.r2{inset-inline-end:0}
+.lx-rail button{width:42px;height:38px;padding:2px 0 0;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  background:rgba(10,14,26,.88);border:1px solid rgba(242,183,5,.35);color:var(--text);box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lx-rail button i{font-style:normal;font-size:16px;line-height:1.1}
+.lx-rail button span{font-size:9.5px;font-weight:800;color:#c9c0a0;line-height:1.15}
+.lx-rail button:active{transform:scale(.94)}
+.lx-rail button.on{border-color:var(--lx-bad);background:rgba(70,16,16,.9)}
+/* شريط المعلومات داخل اللوحة */
+.lx-strip{margin-top:6px;padding-top:8px;border-top:1px solid rgba(242,183,5,.18)}
+.lx-sgrid{display:grid;grid-template-columns:1.35fr .8fr 1fr;gap:6px}
+.lx-sgrid .gps-cell{padding:6px 8px;min-height:0;border-radius:11px;background:rgba(5,8,16,.55);border:1px solid rgba(255,255,255,.06);box-shadow:none}
+.lx-sgrid .gps-cell::after{display:none}
+.lx-sgrid .gps-cell small{font-size:10.5px}
+.lx-sgrid .gps-cell b{font-size:12.5px;line-height:1.35}
+.lx-sgrid .gps-crd b span{display:block;direction:ltr;text-align:start}
+.lx-sline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:7px;font-size:12px;color:var(--text-dim)}
+.lx-strip .lx-conf{display:inline-flex;grid-template-columns:none;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0d1424;border:1px solid var(--lx-line)}
+.lx-strip .lx-conf i{width:10px;height:10px}
+.lx-strip .lx-conf b{font-size:12.5px}
+.lx-strip .lx-cmp{margin:0;padding:0 0 0 0;background:none;border:0;font-size:12px;color:var(--text-dim)}
+.lx-strip .lx-cmp.ok{color:#7fe0a8}.lx-strip .lx-cmp.warn{color:#ffcf6b}.lx-strip .lx-cmp.bad{color:#ff9d90}
+.lx-dash .gps-far{font-size:34px;margin-top:0}
+.lx-dash .gps-sub{font-size:13px;line-height:1.5;margin:0}
+.lx-confr.ok{display:none}
+.lx-confr{margin:4px 2px 0;font-size:11.5px;color:var(--text-dim);line-height:1.5}
+.lx-confr:empty{display:none}
+.gps-grid.lx-emptied{display:none !important}
+/* زر حفظ الموقع: مباشرة تحت اللوحة */
+#gpsBody:has(> .gps-panel)>#gpsHomeSave,#gpsBody:has(> .gps-panel)>#gpsHomeBox{order:3}
+#gpsBody:has(> .gps-panel)>.lx-x{order:4}
+#gpsHomeSave{min-height:54px;font-size:17px}
+.lx-x .lx-xbtns{grid-template-columns:1fr 1fr;margin-top:0}
+.lx-x .lx-warnline{margin:0 0 8px}
+@media (max-width:360px){
+  .lx-mid{padding:24px 42px}
+  .lx-rail button{width:38px;height:37px}
+  .lx-rail button span{font-size:8.5px}
+  .lx-k b,.lx-k .gps-cell b{font-size:13.5px}
+  .lx-k.k2 .gps-cell b{font-size:16px}
+  .lx-sgrid{grid-template-columns:1.4fr .8fr .9fr;gap:4px}
+  .lx-sgrid .gps-cell{padding:5px 6px}
+  .lx-sgrid .gps-cell b{font-size:11.5px}
+}
+
+/* ---------- شاشة الوجهات ---------- */
+.gps-dtop{display:flex;align-items:stretch;gap:10px;margin:0 0 12px}
+.gps-dcount{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:74px;padding:6px 10px;border-radius:var(--lx-r);
+  background:linear-gradient(170deg,var(--lx-navy-3),var(--lx-navy));border:1px solid var(--lx-line)}
+.gps-dcount b{font-size:13px;color:var(--text-dim)}
+.gps-dcount em{font-style:normal;font-size:24px;font-weight:900;color:var(--lx-gold-hi);line-height:1}
+.gps-dtop .gps-add{flex:1;margin:0;min-height:62px;border:0;color:#1f1500 !important;background:var(--lx-gold-grad) !important;
+  box-shadow:0 8px 18px -8px rgba(242,183,5,.7),inset 0 1px 0 rgba(255,255,255,.5)}
+.gps-dtop .gps-add>span{font-size:17px}
+.gps-dtop .gps-add small{color:#4a3500 !important}
+.gps-dtop .gps-add:disabled{opacity:.6}
+.gps-nosel{margin:0 0 12px;padding:10px 12px;border-radius:14px;font-size:13px;color:var(--text-dim);background:rgba(13,20,36,.6);border:1px dashed var(--lx-line)}
+#gpsRecent .gps-card{flex:0 0 100%;max-width:none}
+#gpsRecent{margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(242,183,5,.18)}
+#gpsRecent:empty{display:none}
+.gps-h small{margin-inline-start:auto;font-size:11.5px;color:var(--text-dim);font-weight:700}
+.gps-list{display:flex;flex-direction:column;gap:10px}
+.gps-list .gps-item{display:block;padding:12px;margin:0}
+.gps-ih{display:flex;align-items:center;gap:10px}
+.gps-ih .gps-ic{flex:0 0 auto;width:40px;height:40px;font-size:20px;display:grid;place-items:center}
+.gps-ih .gps-main{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gps-ih .gps-main b{font-size:16.5px;font-weight:900;overflow-wrap:anywhere}
+.gps-selt{font-style:normal;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px;color:#1f1500;background:var(--lx-gold-grad)}
+.gps-ih .gps-lx-nd{align-items:flex-end;min-width:70px}
+.gps-im{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px;margin:8px 0 0;padding:6px 10px;border-radius:10px;background:rgba(5,8,16,.5);font-size:12px;color:var(--text-dim)}
+.gps-crdt{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;color:var(--text)}
+.gps-list .gps-acts{margin-top:8px;padding-top:8px}
+.gps-act[data-cp]::before{--i:var(--i-copy);color:var(--lx-gold)}
+.gps-act[data-cp]::after{content:"نسخ";font-size:13px;font-weight:800}
+.gps-act[data-cp]{font-size:0}
+/* «توجّه إليها» هو الأوضح؛ نسخ/تعديل/حذف أيقونات صغيرة (الاسم في التلميح) */
+.gps-list .gps-goi{flex:1 1 auto;min-width:0;height:44px}
+.gps-list .gps-goi::after{font-size:14.5px}
+.gps-list .gps-act[data-cp],.gps-list .gps-act[data-ed],.gps-list .gps-act[data-del]{flex:0 0 44px;width:44px;height:44px;padding:0;justify-content:center}
+.gps-list .gps-act[data-cp]::after,.gps-list .gps-act[data-ed]::after,.gps-list .gps-act[data-del]::after{content:none}
+.gps-list .gps-act[data-del]{border-color:rgba(255,107,91,.35)}
+#gpsRecent .gps-selb{display:none}
