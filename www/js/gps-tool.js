@@ -299,7 +299,7 @@
                 timer: null, raf: 0, dead: false, started: Date.now(), lastRestart: Date.now(), offLoaded: false };
             run = S;
             root.innerHTML = '<div id="gpsFrame">'
-                + '<div class="gps-tabs"><button type="button" class="gps-tab" data-t="dest">الوجهات</button><button type="button" class="gps-tab" data-t="home">الرئيسية</button><button type="button" class="gps-tab" data-t="info">الحالة</button></div>'
+                + '<div class="gps-tabs"><button type="button" class="gps-tab" data-t="home">الرئيسية</button><button type="button" class="gps-tab" data-t="map">الخريطة</button><button type="button" class="gps-tab" data-t="dest">الوجهات</button><button type="button" class="gps-tab" data-t="trip">الرحلات</button><button type="button" class="gps-tab" data-t="info">الحالة</button></div>'
                 + '<div id="gpsBody"></div></div>';
             const frame = q(root, '#gpsFrame');
             const $ = function (id) { return q(root, '#' + id); };
@@ -325,7 +325,9 @@
                 if (cr && (!sensorOk || cr.sp >= 4))
                     return { h: cr.h, src: 'g' };
                 if (sensorOk && !(S.rel && S.offN === 0))
-                    return { h: GEO.wrap360(S.sh + S.off), src: 's' };
+                    return { h: GEO.wrap360(S.sh + (S.offN > 0 ? S.off : (+opt('decl') || 0))), src: 's' };
+                /* [الشمال الحقيقي] قبل المعايرة من الحركة: الحساس يعطي الشمال المغناطيسي والاتجاه إلى الوجهة محسوب من الشمال الحقيقي.
+                   الانحراف اليدوي (الافتراضي 0 = السلوك القديم نفسه) يصحّح الفرق. بعد المعايرة S.off يشمل الانحراف تلقائيًا */
                 if (cr)
                     return { h: cr.h, src: 'g' };
                 return null;
@@ -525,6 +527,11 @@
                 loadOff();
                 calibrate(c, sp, hd);
                 tick();
+                /* [ربط الوحدات الجديدة] نشر القراءة المقبولة نفسها (بعد التنقية) للخريطة والرحلات — لا متتبّع GPS ثانٍ */
+                try {
+                    window.dispatchEvent(new CustomEvent('gbs:pos', { detail: { lat: la, lng: lo, acc: acc, alt: fin(c.altitude) ? c.altitude : null,
+                        altAcc: fin(c.altitudeAccuracy) ? c.altitudeAccuracy : null, spd: sp, spdS: S.spd, hd: hd, ts: ts, at: now, mode: S.mode } }));
+                } catch (e) { }
             }
             function onErr(e, k) {
                 k = k || GEO.classify(e);
@@ -1747,13 +1754,56 @@
                     bindDest();
                     paintPerm();
                 }
+                else if ((S.tab === 'map' || S.tab === 'trip') && ext(S.tab === 'map' ? 'GBS_MAP' : 'GBS_TRIPS')) {
+                    body.innerHTML = '';
+                    try { ext(S.tab === 'map' ? 'GBS_MAP' : 'GBS_TRIPS').render(body, API); } catch (e) { console.error(e); body.innerHTML = '<div class="gps-note">تعذّر فتح هذا القسم: ' + esc(e && e.message || e) + '</div>'; }
+                    updStat();
+                    return;
+                }
                 else {
+                    S.tab = 'info';
+                    qa(root, '.gps-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-t') === S.tab); });
                     body.innerHTML = infoHTML();
                     bindInfo();
                 }
                 renderEditor();
                 updStat();
+                try { const X = ext('GBS_EXT'); if (X) { if (S.tab === 'home') X.home(body, API); else if (S.tab === 'info') X.info(body, API); } } catch (e) { console.error(e); }
             }
+            function ext(n) { const m = window[n]; return m && typeof m.render === 'function' || (m && n === 'GBS_EXT') ? m : null; }
+            function extTick() {
+                try {
+                    if (S.tab === 'map' && ext('GBS_MAP')) ext('GBS_MAP').update(API);
+                    else if (S.tab === 'trip' && ext('GBS_TRIPS')) ext('GBS_TRIPS').update(API);
+                    const X = ext('GBS_EXT'); if (X && X.update) X.update(S.tab, API);
+                } catch (e) { console.error(e); }
+            }
+            /* واجهة للقراءة فقط تستعملها الوحدات الجديدة (الخريطة/الرحلات/وضع الصحراء) — لا تغيّر منطق GPS أو البوصلة */
+            function live() {
+                const now = Date.now(), p = S.pos, hh = curHeading();
+                const crOk = S.course && now - S.course.t < 4000;
+                return {
+                    fix: p ? { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, alt: fin(p.coords.altitude) ? p.coords.altitude : null,
+                        altAcc: fin(p.coords.altitudeAccuracy) ? p.coords.altitudeAccuracy : null, ts: p.timestamp } : null,
+                    fixAt: S.fix || 0, age: S.fix ? now - S.fix : null, stale: !S.fix || now - S.fix > 6000,
+                    spd: (S.fix && now - S.fix <= 6000) ? S.spd : null,
+                    course: crOk ? { h: S.course.h, sp: S.course.sp } : null,
+                    heading: hh, phone: (S.sh != null && now - S.shAt < 2500) ? GEO.wrap360(S.sh + (S.offN > 0 ? S.off : (+opt('decl') || 0))) : null,
+                    sensor: { ori: S.ori, rel: !!S.rel, abs: !!S.absAt, offN: S.offN, off: S.off, cAcc: S.cAcc, live: S.sh != null && now - S.shAt < 2500 },
+                    mode: S.mode, nJump: S.nJump, nRej: S.nRej, nAcc: S.nAcc, perm: S.perm && S.perm.state, err: S.err, sel: selDest(), resumed: S.resumed || 0
+                };
+            }
+            function upsertDest(d) {
+                const D = db();
+                let x = D.dests.find(function (o) { return o.id === d.id; });
+                if (!x) { x = { id: d.id || newId(), t: Date.now() }; D.dests.push(x); }
+                Object.assign(x, d, { lat: +(+d.lat).toFixed(6), lng: +(+d.lng).toFixed(6) });
+                persist();
+                return x;
+            }
+            const API = { go: go, pickDest: function (id) { pickDest(id); }, db: db, persist: persist, opt: opt, setOpt: setOpt, live: live, upsertDest: upsertDest,
+                fmtD: fmtD, dirLbl: dirLbl, copyCoords: function (d) { copyCoords(d); }, tab: function () { return S.tab; }, alive: function () { return alive(); } };
+            window.GBS_API = API;
             function go(tab) { S.tab = tab; paintBody(); }
             function tick() {
                 if (!alive()) {
@@ -1769,8 +1819,9 @@
                     updDist();
                     paintPerm();
                 }
-                else
+                else if (S.tab === 'info')
                     updInfo();
+                extTick();
             }
             qa(root, '.gps-tab').forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-t')); }); });
             /* ---------- التشغيل ---------- */
@@ -1784,6 +1835,7 @@
                 }
                 const now = Date.now();
                 updStat();
+                extTick();
                 if (S.tab === 'info')
                     updInfo();
                 else if (S.tab === 'home') {

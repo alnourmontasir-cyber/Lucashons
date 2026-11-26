@@ -40,17 +40,26 @@
     function showBackup() {
         $('sheetTitle').textContent = 'النسخ الاحتياطي';
         var n = (settings.gpsNav && settings.gpsNav.dests || []).length;
-        $('sheetBody').innerHTML = '<p>المحفوظ الآن: <b>' + n + '</b> موقع/وجهة.</p>'
+        var nt = window.GBS_TRIPS ? GBS_TRIPS.list().length + (GBS_TRIPS.current() ? 1 : 0) : 0;
+        $('sheetBody').innerHTML = '<p>المحفوظ الآن: <b>' + n + '</b> موقع/وجهة و<b>' + nt + '</b> رحلة.</p>'
             + '<div class="row"><button type="button" class="btn btn-primary" id="bkExport">⬇️ تصدير ملف</button>'
             + '<button type="button" class="btn btn-ghost" id="bkImport">⬆️ استيراد ملف</button></div>'
-            + '<p class="hint">الاستيراد يستبدل الوجهات الحالية بما في الملف.</p>';
+            + '<p class="hint">الاستيراد يستبدل الوجهات الحالية بما في الملف، ويضيف الرحلات غير الموجودة دون حذف رحلاتك.</p>';
         $('bkExport').onclick = exportData;
         $('bkImport').onclick = function () { $('bkFile').click(); };
         openSheet();
     }
     function exportData() {
-        var json = JSON.stringify({ app: 'gbs', v: 1, at: new Date().toISOString(), gpsNav: settings.gpsNav || { dests: [], sel: null } }, null, 2);
-        var name = 'gbs-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+        /* v2: الوجهات + الرحلات. ملفات v1 القديمة تبقى قابلة للاستيراد */
+        var jobs = window.GBS_TRIPS ? GBS_TRIPS.exportAll().catch(function () { return []; }) : Promise.resolve([]);
+        jobs.then(function (trips) {
+            var json = JSON.stringify({ app: 'gbs', v: 2, at: new Date().toISOString(), gpsNav: settings.gpsNav || { dests: [], sel: null }, trips: trips });
+            var name = 'gbs-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+            if (window.GBS_SAVEFILE) { GBS_SAVEFILE(name, json, 'application/json'); return; }
+            exportLegacy(json, name);
+        });
+    }
+    function exportLegacy(json, name) {
         var Share = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
         if (Share) { F.share(json); return; } /* داخل تطبيق أندرويد: مشاركة النص (حفظه في ملاحظة أو إرساله) */
         var a = document.createElement('a');
@@ -69,12 +78,13 @@
             var o = JSON.parse(txt);
             var nav = o && (o.gpsNav || (o.settings && o.settings.gpsNav));
             if (!nav || !Array.isArray(nav.dests)) throw new Error('bad');
-            showConfirm('استيراد', 'سيُستبدل ' + nav.dests.length + ' موقع/وجهة بالمحفوظ حاليًا. متابعة؟', function () {
+            var trips = Array.isArray(o.trips) ? o.trips : [];
+            showConfirm('استيراد', 'سيُستبدل ' + nav.dests.length + ' موقع/وجهة بالمحفوظ حاليًا' + (trips.length ? ' وتُضاف الرحلات الجديدة من ' + trips.length + ' رحلة' : '') + '. متابعة؟', function () {
                 settings.gpsNav = nav;
                 saveSettingsData();
                 closeSheet();
-                F.open('gps');
-                toast('تم الاستيراد');
+                var tj = (trips.length && window.GBS_TRIPS) ? GBS_TRIPS.importAll(trips) : Promise.resolve(0);
+                tj.then(function (k) { F.open('gps'); toast('تم الاستيراد' + (k ? ' (+' + k + ' رحلة)' : '')); });
             });
         }).catch(function () { toast('الملف غير صالح'); });
     });

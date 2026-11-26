@@ -7,11 +7,18 @@
     var KEY = 'gbs.settings.v1';
 
     /* ---------- الإعدادات (تُحفظ في localStorage — تبقى داخل التطبيق المثبّت) ---------- */
-    var data = {};
-    try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { data = {}; }
+    /* [حماية من التلف] نسخة احتياطية ثانية تُكتب بعد نجاح الحفظ؛ إن تلف الأصل (انقطاع أثناء الكتابة) نقرأ النسخة الثانية */
+    var BAK = KEY + '.bak';
+    function readJSON(k) { try { var v = JSON.parse(localStorage.getItem(k) || 'null'); return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null; } catch (e) { return null; } }
+    var data = readJSON(KEY);
+    if (!data) { data = readJSON(BAK) || {}; window.__settingsRecovered = !!readJSON(BAK) && localStorage.getItem(KEY) != null; }
     window.settings = data;
     window.saveSettingsData = function () {
-        try { localStorage.setItem(KEY, JSON.stringify(window.settings)); } catch (e) { }
+        try {
+            var j = JSON.stringify(window.settings);
+            localStorage.setItem(KEY, j);
+            if (localStorage.getItem(KEY) === j) localStorage.setItem(BAK, j);
+        } catch (e) { }
     };
 
     /* ---------- إشعار قصير ---------- */
