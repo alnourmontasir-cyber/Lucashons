@@ -51,29 +51,88 @@
         return d > 25 ? Math.round(d) : null;
     }
 
-    /* ---------- شريط الرئيسية ---------- */
-    var homeEl = null;
+    /* ---------- لوحة البوصلة الذكية (الرئيسية) ----------
+       لا نكرر أي حساب: ننقل خانات الأداة نفسها (السرعة، الدقة، الإشارة، الإحداثيات، الارتفاع) إلى زوايا اللوحة،
+       فتبقى الأداة هي من يحدّثها كما كانت. نضيف فقط اتجاه الهاتف ومسار الحركة وعمر القراءة والمعايرة من live(). */
+    var homeEl = null, dashEl = null, ZKEY = 'gbs.dialz';
+    function dialZ() { try { var z = +localStorage.getItem(ZKEY); return z >= 1 && z <= 3 ? z : 1; } catch (e) { return 1; } }
+    var TRAVEL = { auto: { i: '🔄', t: 'تلقائي' }, car: { i: '🚗', t: 'سيارة' }, walk: { i: '🚶', t: 'مشي' } };
+    function cellOf(body, id) { var b = body.querySelector('#' + id); return b ? b.closest('.gps-cell') : null; }
+    function buildDash(body) {
+        var panel = body.querySelector(':scope > .gps-panel'), dial = panel && panel.querySelector('.gps-dial');
+        if (!panel || !dial) return null;
+        panel.classList.add('lx-dash');
+        var mid = document.createElement('div');
+        mid.className = 'lx-mid lx-z' + dialZ();
+        dial.parentNode.insertBefore(mid, dial);
+        mid.appendChild(dial);
+        var tr = api().opt('travel') || 'auto', T0 = TRAVEL[tr] || TRAVEL.auto;
+        var A = api(), sel = A.live().sel;
+        mid.insertAdjacentHTML('beforeend',
+            '<div class="lx-k k1"><small>اتجاه الهاتف</small><b id="xPhone">—</b></div>'
+            + '<div class="lx-k k2" id="xK2"></div>'
+            + '<div class="lx-k k3" id="xK3"></div>'
+            + '<div class="lx-k k4"><small>مسار الحركة</small><b id="xCourse">—</b></div>'
+            + '<div class="lx-rail r1">'
+            + '<button type="button" data-x="zoom" title="حجم البوصلة" aria-label="حجم البوصلة"><i>⤢</i><span>الحجم</span></button>'
+            + '<button type="button" data-x="travel" title="وضع التنقل (لتقدير الوقت)" aria-label="وضع التنقل"><i id="xTrI">' + T0.i + '</i><span id="xTrT">' + T0.t + '</span></button>'
+            + '<button type="button" data-x="reset" title="إعادة ضبط معايرة البوصلة" aria-label="إعادة ضبط البوصلة"><i>↺</i><span>معايرة</span></button>'
+            + '</div><div class="lx-rail r2">'
+            + '<button type="button" data-x="desert" title="وضع الصحراء" aria-label="وضع الصحراء"><i>🏜</i><span>صحراء</span></button>'
+            + '<button type="button" data-x="nav" class="' + (sel ? 'on' : '') + '" title="' + (sel ? 'إيقاف التوجيه' : 'بدء التوجيه') + '" aria-label="التوجيه"><i>' + (sel ? '⏹' : '▶') + '</i><span>' + (sel ? 'إيقاف' : 'توجيه') + '</span></button>'
+            + '<button type="button" data-x="dests" title="الوجهات" aria-label="الوجهات"><i>📍</i><span>وجهات</span></button>'
+            + '<button type="button" data-x="trips" title="الرحلات" aria-label="الرحلات"><i>〰</i><span>رحلات</span></button>'
+            + '</div>');
+        var k2 = cellOf(body, 'gpsSpd'), k3 = cellOf(body, 'gpsAcc');
+        if (k2) mid.querySelector('#xK2').appendChild(k2);
+        if (k3) mid.querySelector('#xK3').appendChild(k3);
+        /* شريط المعلومات أسفل الدائرة داخل اللوحة */
+        var strip = document.createElement('div');
+        strip.className = 'lx-strip';
+        strip.innerHTML = '<div class="lx-sgrid" id="xSG"></div>'
+            + '<div class="lx-sline"><span class="lx-conf" id="xConf"><i></i><b></b></span><span id="xAge">—</span><span class="lx-sat" title="أندرويد والمتصفح لا يتيحان عدد الأقمار لتطبيقات الويب">الأقمار: غير متاح</span><span class="lx-cmp" id="xCmp"></span></div>'
+            + '<p class="lx-confr" id="xConfR"></p>';
+        panel.appendChild(strip);
+        var sg = strip.querySelector('#xSG');
+        ['gpsLat', 'gpsAlt', 'gpsSig'].forEach(function (id) { var c = cellOf(body, id); if (c) sg.appendChild(c); });
+        /* ما تبقى في الشبكة (اتجاه الأداة المعتمد للسهم) يبقى مخفيًا لكنه يُحدَّث كما كان */
+        var grid = body.querySelector(':scope > .gps-grid'); if (grid) grid.classList.add('lx-emptied');
+        mid.addEventListener('click', onDash);
+        return panel;
+    }
+    function onDash(e) {
+        var b = e.target.closest('[data-x]'); if (!b) return;
+        var A = api(), k = b.getAttribute('data-x');
+        if (k === 'zoom') {
+            var z = dialZ() % 3 + 1; try { localStorage.setItem(ZKEY, String(z)); } catch (er) { }
+            var m = b.closest('.lx-mid'); m.classList.remove('lx-z1', 'lx-z2', 'lx-z3'); m.classList.add('lx-z' + z);
+        } else if (k === 'travel') {
+            var order = ['auto', 'car', 'walk'], cur = A.opt('travel') || 'auto', nx = order[(order.indexOf(cur) + 1) % 3];
+            A.setOpt('travel', nx === 'auto' ? null : nx);
+            set2(b.querySelector('#xTrI'), TRAVEL[nx].i); set2(b.querySelector('#xTrT'), TRAVEL[nx].t);
+            toast('وضع التنقل: ' + TRAVEL[nx].t + ' — يُستعمل لتقدير الوقت حين لا تتوفر سرعتك الحالية');
+        } else if (k === 'reset') {
+            showConfirm('إعادة ضبط البوصلة', 'سيُمسح تصحيح الاتجاه المحفوظ، ويعاير التطبيق البوصلة من جديد بعد دقيقة مشي أو قيادة. متابعة؟', function () { A.resetCal(); updHome(); });
+        } else if (k === 'desert') openDesert();
+        else if (k === 'nav') { if (A.live().sel) showConfirm('إيقاف التوجيه', 'إيقاف التوجيه إلى الوجهة الحالية؟ (الوجهة تبقى محفوظة)', function () { A.stopNav(); }); else A.go('dest'); }
+        else if (k === 'dests') A.go('dest');
+        else if (k === 'trips') A.go('trip');
+    }
     function homeHTML() {
-        return '<div class="lx-conf" id="xConf"><i></i><b></b><span></span></div>'
-            + '<div class="lx-xgrid">'
-            + '<div class="lx-xc"><small>مسار الحركة (GPS)</small><b id="xCourse">—</b></div>'
-            + '<div class="lx-xc"><small>اتجاه الهاتف (البوصلة)</small><b id="xPhone">—</b></div>'
-            + '<div class="lx-xc"><small>عمر آخر قراءة</small><b id="xAge">—</b></div>'
-            + '<div class="lx-xc"><small>عدد الأقمار</small><b title="أندرويد والمتصفح لا يتيحان عدد الأقمار لتطبيقات الويب">غير متاح</b></div>'
-            + '</div>'
-            + '<p class="lx-cmp" id="xCmp"></p><p class="lx-warnline" id="xInt" hidden></p>'
-            + '<div class="lx-xbtns"><button type="button" data-x="rec" id="xRec">⏺ تسجيل رحلة</button><button type="button" data-x="back">↩️ العودة للبداية</button><button type="button" data-x="desert">🏜 وضع الصحراء</button></div>';
+        return '<p class="lx-warnline" id="xInt" hidden></p>'
+            + '<div class="lx-xbtns"><button type="button" data-x="rec" id="xRec">⏺ تسجيل رحلة</button><button type="button" data-x="back">↩️ العودة للبداية</button></div>';
     }
     function updHome() {
         if (!homeEl || !homeEl.isConnected) return;
         var A = api(); if (!A) return;
-        var L = A.live(), set = function (id, v) { var e = homeEl.querySelector('#' + id); if (e && e.textContent !== v) e.textContent = v; };
-        var c = confidence(L), ce = homeEl.querySelector('#xConf');
-        ce.className = 'lx-conf ' + c.c; set2(ce.querySelector('b'), c.t); set2(ce.querySelector('span'), c.r);
-        set('xCourse', L.course && !L.stale ? deg(L.course.h) + ' ' + A.dirLbl(L.course.h) : (L.stale ? '—' : 'واقف / غير متاح'));
+        var L = A.live(), root = homeEl.parentNode, set = function (id, v) { var e = root.querySelector('#' + id); if (e && e.textContent !== v) e.textContent = v; };
+        var c = confidence(L), ce = root.querySelector('#xConf');
+        if (ce) { ce.className = 'lx-conf ' + c.c; set2(ce.querySelector('b'), c.t); }
+        set('xConfR', c.r); var cr = root.querySelector('#xConfR'); if (cr) cr.className = 'lx-confr ' + c.c;
+        set('xCourse', L.course && !L.stale ? deg(L.course.h) + ' ' + A.dirLbl(L.course.h) : (L.stale ? '—' : 'واقف'));
         set('xPhone', L.phone != null ? deg(L.phone) + ' ' + A.dirLbl(L.phone) : 'غير متاح');
-        set('xAge', L.fixAt ? ago(L.age) : '—');
-        var cs = compassState(L), cm = homeEl.querySelector('#xCmp'); cm.className = 'lx-cmp ' + cs.c; set2(cm, 'حالة البوصلة: ' + cs.t);
+        set('xAge', 'آخر تحديث: ' + (L.fixAt ? ago(L.age) : '—'));
+        var cs = compassState(L), cm = root.querySelector('#xCmp'); if (cm) { cm.className = 'lx-cmp ' + cs.c; set2(cm, 'البوصلة: ' + cs.t); }
         var it = interference(L), ie = homeEl.querySelector('#xInt');
         ie.hidden = !it; if (it) set2(ie, '⚠ فرق ' + it + '° بين البوصلة واتجاه الحركة: تداخل مغناطيسي محتمل أو الهاتف غير موجّه للأمام. السهم يعتمد الآن مسار الحركة.');
         var cur = T() && T().current(), rb = homeEl.querySelector('#xRec');
@@ -251,17 +310,16 @@
     /* ---------- الربط مع الأداة ---------- */
     window.GBS_EXT = {
         home: function (body) {
+            try { dashEl = buildDash(body); } catch (e) { console.error(e); }
             homeEl = document.createElement('div');
             homeEl.className = 'lx-x';
             homeEl.innerHTML = homeHTML();
-            var grid = body.querySelector(':scope > .gps-grid');
-            if (grid) grid.after(homeEl); else body.appendChild(homeEl);
+            body.appendChild(homeEl);
             homeEl.addEventListener('click', function (e) {
                 var b = e.target.closest('[data-x]'); if (!b) return;
                 var k = b.getAttribute('data-x');
                 if (k === 'rec') api().go('trip');
                 else if (k === 'back') backChooser();
-                else if (k === 'desert') openDesert();
             });
             updHome();
         },

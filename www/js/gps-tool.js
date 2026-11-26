@@ -981,9 +981,15 @@
                     })();
                 });
             }
-            async function doSave(kind) {
+            async function doSave(kind, force) {
                 if (!S.pos || S.capBusy)
                     return;
+                /* [حماية الحفظ] لا نحفظ موقعًا قديمًا بصمت (بعد انقطاع الإشارة أو العودة من الخلفية) */
+                const ageMs = S.fix ? Date.now() - S.fix : Infinity;
+                if (!force && ageMs > 6000) {
+                    showConfirm('الموقع قديم', 'آخر قراءة GPS ' + (isFinite(ageMs) ? 'منذ ' + Math.round(ageMs / 1000) + ' ثانية' : 'غير متوفرة') + ' — قد لا يكون هذا مكانك الآن. الأفضل الانتظار حتى تعود الإشارة. هل تحاول الحفظ على أي حال؟', function () { doSave(kind, true); });
+                    return;
+                }
                 S.capBusy = true;
                 const id = kind === 'park' ? 'gpsPark' : kind === 'home' ? 'gpsHomeOk' : 'gpsSave', ms = kind === 'park' ? 5000 : 6000;
                 const btn = $(id), old = btn ? btn.innerHTML : '';
@@ -995,6 +1001,10 @@
                     b2.innerHTML = old;
                 if (S.dead || !r)
                     return;
+                if (!(fin(r.lat) && fin(r.lng) && Math.abs(r.lat) <= 90 && Math.abs(r.lng) <= 180)) {
+                    toast('تعذّر الحفظ: الإحداثيات غير صالحة');
+                    return;
+                }
                 const go = function () { kind === 'park' ? finishPark(r) : kind === 'home' ? finishHome(r) : finishSave(r); };
                 if (r.acc > 60)
                     showConfirm('دقة الموقع ضعيفة', 'الدقة الحالية ±' + Math.round(r.acc) + ' م — قد يكون المكان المحفوظ بعيدًا عن موقعك الفعلي. الأفضل الانتظار في مكان مكشوف ثم المحاولة. هل تحفظه على أي حال؟', go);
@@ -1162,7 +1172,10 @@
             }
             /* ---------- تبويب: الوجهات ---------- */
             function destHTML() {
-                return '<div id="gpsRecent"></div><button type="button" class="gps-add" id="gpsSave" disabled><span>+ إضافة وجهة</span><small>حفظ موقعك الحالي كوجهة</small></button>'
+                /* [تصميم] الإضافة أولًا وبارزة، ثم «الوجهة الحالية» منفصلة، ثم «كل الوجهات» (أُزيل تكرار «المحفوظة مؤخرًا») */
+                return '<div class="gps-dtop"><div class="gps-dcount"><b>الوجهات</b><em id="gpsDCount">' + db().dests.length + '</em></div>'
+                    + '<button type="button" class="gps-add" id="gpsSave" disabled><span>+ إضافة وجهة</span><small>حفظ موقعك الحالي</small></button></div>'
+                    + '<div id="gpsRecent"></div>'
                     + '<div id="gpsEdSlot"></div><div class="gps-list" id="gpsList" style="margin-top:0;margin-bottom:12px"></div><div id="gpsPerm"></div>' + statHTML()
                     + '<div class="gps-row" style="margin-top:0"><input class="gps-in" id="gpsQ" placeholder="اسم مكان، أو إحداثيات، أو رابط خرائط جوجل" enterkeyhint="search" autocomplete="off"><button type="button" class="btn btn-primary" id="gpsGo" style="flex:0 0 auto;padding:0 20px">بحث</button></div>'
                     + '<p class="gps-note">البحث بالاسم يحتاج إنترنت (ويُرتّب الأقرب لموقعك أولًا). الإحداثيات بصيغة عشرية (15.5007, 32.5599) أو درجات (15°30′02″N 32°33′21″E) وروابط خرائط جوجل وOpenStreetMap الكاملة تعمل بدون إنترنت.</p>'
@@ -1196,7 +1209,7 @@
                     list.innerHTML = '<p class="gps-empty">لا توجد وجهات بعد.<br>اضغط «إضافة وجهة» لحفظ موقعك الحالي، أو ابحث عن مكان بالأسفل.</p>';
                     return;
                 }
-                list.innerHTML = '<div class="gps-h"><span>كل الوجهات</span><em>' + D.dests.length + '</em></div>'
+                list.innerHTML = '<div class="gps-h"><span>كل الوجهات</span><em>' + D.dests.length + '</em><small>' + (S.pos ? 'الأقرب أولًا' : 'الأحدث أولًا') + '</small></div>'
                     + sortedDests().map(function (d) { return destItemHTML(d, D); }).join('');
             }
             /* ---------- المواقع المحفوظة مؤخرًا ---------- */
@@ -1232,7 +1245,7 @@
                     + '<div class="gps-ch"><span class="gps-ic">' + esc(d.emoji) + '</span><div class="gps-main"><b>' + esc(d.name) + '</b><small>' + esc(agoTxt(d.t)) + '</small></div></div>'
                     + '<div class="gps-cd">'
                     + '<div><small>المسافة</small><b class="rtl" data-d="' + esc(d.id) + '">' + (S.pos ? fmtD(dist(lat(), lng(), d.lat, d.lng)) : '—') + '</b></div>'
-                    + '<div><small>الاتجاه</small><b class="rtl" data-b="' + esc(d.id) + '">' + (S.pos ? dirLbl(bear(lat(), lng(), d.lat, d.lng)) : '—') + '</b></div>'
+                    + '<div><small>الاتجاه</small><b class="rtl" data-b="' + esc(d.id) + '">' + (S.pos ? brgTxt(d) : '—') + '</b></div>'
                     + '<div class="w"><small>الإحداثيات</small><b>' + esc(fmtCoord(d.lat, true)) + ', ' + esc(fmtCoord(d.lng, false)) + '</b></div>'
                     + '<div><small>دقة الحفظ</small><b class="rtl">' + (ql ? '±' + d.acc + ' م — ' + ql.t : 'غير مسجّلة') + '</b></div>'
                     + '<div><small>وقت الحفظ</small><b class="rtl">' + esc(fullDate(d.t)) + '</b></div>'
@@ -1246,13 +1259,17 @@
                 if (!box)
                     return;
                 const D = db();
-                const rec = D.dests.filter(function (x) { return x && x.t; }).sort(function (a, b) { return b.t - a.t; }).slice(0, 6);
-                if (!rec.length) {
-                    box.innerHTML = '';
+                const cnt = $('gpsDCount');
+                if (cnt)
+                    cnt.textContent = D.dests.length;
+                /* [تصميم] قسم «الوجهة الحالية» فقط — بقية الوجهات في القائمة أسفله */
+                const cur = D.dests.find(function (x) { return x.id === D.sel; });
+                if (!cur) {
+                    box.innerHTML = D.dests.length ? '<p class="gps-nosel">لا توجد وجهة محددة الآن — اضغط «توجّه إليها» على أي وجهة.</p>' : '';
                     return;
                 }
-                box.innerHTML = '<div class="gps-h"><span>محفوظة مؤخرًا</span><em>' + rec.length + '</em></div>'
-                    + '<div class="gps-rc">' + rec.map(function (d, i) { return recentHTML(d, D, i === 0); }).join('') + '</div>';
+                box.innerHTML = '<div class="gps-h"><span>الوجهة الحالية</span></div>'
+                    + '<div class="gps-rc">' + recentHTML(cur, D, false) + '</div>';
             }
             function copyCoords(d) {
                 const txt = d.lat.toFixed(6) + ', ' + d.lng.toFixed(6);
@@ -1287,17 +1304,24 @@
                 }
             }
             function destItemHTML(d, D) {
-                return '<div class="gps-item' + (d.id === D.sel ? ' sel' : '') + '" data-id="' + esc(d.id) + '">'
-                    + '<span class="gps-ic">' + esc(d.emoji) + '</span>'
-                    + '<div class="gps-main"><b>' + esc(d.name) + '</b><small>' + esc(dateTxt(d.t)) + ' — ' + d.lat.toFixed(4) + ', ' + d.lng.toFixed(4) + (fin(d.acc) ? ' — ±' + d.acc + ' م' : '') + '</small></div>'
-                    /* [تصميم] المسافة + الاتجاه (يحدّثهما updDist تلقائيًا عبر data-d / data-b) */
-                    + '<span class="gps-lx-nd"><span class="gps-dist" data-d="' + esc(d.id) + '">' + (S.pos ? fmtD(d._m) : '') + '</span>'
-                    + '<small class="gps-dir" data-b="' + esc(d.id) + '">' + (S.pos ? dirLbl(bear(lat(), lng(), d.lat, d.lng)) : '') + '</small></span>'
-                    /* [تصميم] صف الأزرار: «توجّه» يمرّ لنفس معالج الضغط على الصف (pickDest) */
-                    + '<span class="gps-acts"><button type="button" class="gps-act gps-goi" title="توجّه إليها">🧭</button>'
-                    + '<button type="button" class="gps-act" data-ed title="تعديل">✏️</button>'
-                    + '<button type="button" class="gps-act" data-del title="حذف">🗑️</button></span></div>';
+                /* [تصميم] بطاقة مستقلة: الاسم بارز، ثم المسافة والاتجاه والإحداثيات والتاريخ، ثم الأزرار داخل البطاقة */
+                const sel = d.id === D.sel;
+                return '<div class="gps-item' + (sel ? ' sel' : '') + '" data-id="' + esc(d.id) + '">'
+                    + '<div class="gps-ih"><span class="gps-ic">' + esc(d.emoji) + '</span>'
+                    + '<div class="gps-main"><b>' + esc(d.name) + '</b>' + (sel ? '<i class="gps-selt">الحالية</i>' : '') + '</div>'
+                    /* المسافة + الاتجاه (يحدّثهما updDist تلقائيًا عبر data-d / data-b) */
+                    + '<span class="gps-lx-nd"><span class="gps-dist" data-d="' + esc(d.id) + '">' + (S.pos ? fmtD(dist(lat(), lng(), d.lat, d.lng)) : '—') + '</span>'
+                    + '<small class="gps-dir" data-b="' + esc(d.id) + '">' + (S.pos ? brgTxt(d) : '') + '</small></span></div>'
+                    + '<div class="gps-im"><span class="gps-crdt">' + esc(fmtCoord(d.lat, true)) + ', ' + esc(fmtCoord(d.lng, false)) + '</span>'
+                    + '<span>' + esc(dateTxt(d.t)) + (fin(d.acc) ? ' · ±' + d.acc + ' م' : '') + '</span></div>'
+                    /* «توجّه» يمرّ لنفس معالج الضغط على البطاقة (pickDest) */
+                    + '<div class="gps-acts"><button type="button" class="gps-act gps-goi">🧭 توجّه إليها</button>'
+                    + '<button type="button" class="gps-act" data-cp title="نسخ الإحداثيات" aria-label="نسخ الإحداثيات">📋</button>'
+                    + '<button type="button" class="gps-act" data-ed title="تعديل" aria-label="تعديل">✏️</button>'
+                    + '<button type="button" class="gps-act" data-del title="حذف" aria-label="حذف">🗑️</button></div></div>';
             }
+            /* [تصميم] الاتجاه بالدرجات + الاتجاه الجغرافي */
+            function brgTxt(d) { const b = bear(lat(), lng(), d.lat, d.lng); return (Math.round(b) % 360) + '° ' + dirLbl(b); }
             function updDist() {
                 if (!S.pos)
                     return;
@@ -1310,7 +1334,7 @@
                 qa(root, '[data-b]').forEach(function (el) {
                     const d = db().dests.find(function (x) { return x.id === el.getAttribute('data-b'); });
                     if (d) {
-                        const t = dirLbl(bear(lat(), lng(), d.lat, d.lng));
+                        const t = brgTxt(d);
                         if (el.textContent !== t)
                             el.textContent = t;
                     }
@@ -1360,6 +1384,10 @@
                             renderList();
                             toast('تم حذف الوجهة');
                         });
+                        return;
+                    }
+                    if (e.target.closest('[data-cp]')) {
+                        copyCoords(d);
                         return;
                     }
                     if (e.target.closest('[data-ed]')) {
@@ -1653,7 +1681,9 @@
                 const sp = S.spd;
                 if (sp != null && sp >= 0.8)
                     return 'الوقت المتوقع ≈ ' + fmtT(m / Math.min(sp, 45) / 60) + ' (حسب سرعتك الحالية)';
-                if (m < 3000)
+                /* وضع التنقل (من لوحة البوصلة) يؤثر فقط على تقدير الوقت عند عدم وجود سرعة حالية */
+                const tm = opt('travel');
+                if (tm === 'walk' || (tm !== 'car' && m < 3000))
                     return 'مشيًا ≈ ' + fmtT(m / 1000 / 5 * 60);
                 return 'بالسيارة ≈ ' + fmtT(m / 1000 / 50 * 60);
             }
@@ -1802,7 +1832,10 @@
                 return x;
             }
             const API = { go: go, pickDest: function (id) { pickDest(id); }, db: db, persist: persist, opt: opt, setOpt: setOpt, live: live, upsertDest: upsertDest,
-                fmtD: fmtD, dirLbl: dirLbl, copyCoords: function (d) { copyCoords(d); }, tab: function () { return S.tab; }, alive: function () { return alive(); } };
+                fmtD: fmtD, dirLbl: dirLbl, copyCoords: function (d) { copyCoords(d); }, tab: function () { return S.tab; }, alive: function () { return alive(); },
+                resetCal: function () { S.off = 0; S.offN = 0; S.offLoaded = true; const D = db(); if (D.opts) delete D.opts.off; persist(); toast('تمت إعادة ضبط معايرة البوصلة — ستُعاير من جديد بعد دقيقة حركة'); },
+                stopNav: function () { db().sel = null; persist(); S.arrived = false; paintBody(); },
+                save: function (kind) { doSave(kind || 'home'); }, repaint: function () { paintBody(); } };
             window.GBS_API = API;
             function go(tab) { S.tab = tab; paintBody(); }
             function tick() {
