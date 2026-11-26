@@ -435,3 +435,143 @@ body{
 @media (min-width:600px){
   #gpsFrame .gps-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+/* ======================================================================
+   نظام الملاحة الصحراوية: 5 تبويبات، الخريطة، الرحلات، وضع الصحراء
+   ====================================================================== */
+#gpsFrame .gps-tabs{gap:3px;padding:5px}
+#gpsFrame .gps-tab{font-size:11.5px !important;padding:3px 1px !important;min-width:0;white-space:nowrap}
+#gpsFrame .gps-tab[data-t="map"]::before{--i:var(--i-map)}
+#gpsFrame .gps-tab[data-t="trip"]::before{--i:var(--i-car)}
+@media (max-width:360px){#gpsFrame .gps-tab{font-size:10.5px !important}#gpsFrame .gps-tab::before{width:20px;height:20px}}
+
+/* ---------- عناصر مشتركة ---------- */
+.lx-sec{margin:0 0 12px;padding:14px;border-radius:var(--lx-r);background:linear-gradient(170deg,#111a2d,#0b111f);border:1px solid var(--lx-line);box-shadow:var(--lx-shadow)}
+.lx-h{margin:0 0 10px;font-size:16px;font-weight:900;color:var(--lx-gold-hi);display:flex;align-items:center;gap:8px}
+.lx-h small{color:var(--text-dim);font-weight:700}
+.lx-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.lx-btn{min-height:44px;padding:8px 14px;border-radius:14px;font-size:14px;font-weight:800;color:var(--text);
+  background:linear-gradient(180deg,#18233b,#111a2d);border:1px solid var(--lx-line) !important;flex:1 1 auto}
+.lx-btn:active{transform:scale(.97)}
+.lx-btn-gold{color:#1f1500;background:var(--lx-gold-grad);border-color:transparent !important}
+.lx-btn-bad{color:#ffd9d4;background:linear-gradient(180deg,#3a1a1a,#251111);border-color:rgba(255,107,91,.45) !important}
+.lx-big{width:100%;min-height:58px;font-size:17px}
+.lx-kv{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(34,48,80,.6);font-size:14px}
+.lx-kv:first-of-type{border-top:0}
+.lx-kv>span{color:var(--text-dim)}
+.lx-kv>b{text-align:end;font-weight:800}
+.lx-kv>b small{display:block;color:var(--text-dim);font-weight:600;font-size:12px}
+.lx-ltr{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
+.lx-badge-line{margin:10px 0 0;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.6;border-inline-start:4px solid}
+.lx-badge-line.ok{background:rgba(52,199,123,.08);border-color:var(--lx-ok)}
+.lx-badge-line.warn{background:rgba(240,176,60,.08);border-color:var(--lx-warn)}
+.lx-badge-line.bad{background:rgba(255,107,91,.08);border-color:var(--lx-bad)}
+.lx-radio{display:flex;align-items:center;gap:10px;padding:10px 4px;font-weight:700}
+.lx-radio input{width:auto}
+
+/* ---------- الرئيسية: الثقة والاتجاهات ---------- */
+#gpsBody:has(> .gps-panel)>.lx-x{order:3}
+.lx-x{margin:0 0 12px}
+.lx-conf{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:4px 10px;padding:11px 14px;border-radius:16px;background:#0d1424;border:1px solid var(--lx-line)}
+.lx-conf i{width:14px;height:14px;border-radius:50%;background:var(--lx-bad);box-shadow:0 0 12px var(--lx-bad)}
+.lx-conf b{font-weight:900;font-size:15px}
+.lx-conf span{color:var(--text-dim);font-size:12.5px;line-height:1.5}
+.lx-conf.ok i{background:var(--lx-ok);box-shadow:0 0 12px var(--lx-ok)}.lx-conf.ok{border-color:rgba(52,199,123,.45)}
+.lx-conf.warn i{background:var(--lx-warn);box-shadow:0 0 12px var(--lx-warn)}.lx-conf.warn{border-color:rgba(240,176,60,.45)}
+.lx-conf.bad{border-color:rgba(255,107,91,.45)}
+.lx-xgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.lx-xc{padding:10px 12px;border-radius:14px;background:rgba(13,20,36,.75);border:1px solid var(--lx-line)}
+.lx-xc small{display:block;color:var(--text-dim);font-size:12px}
+.lx-xc b{font-size:16px;font-weight:900;font-variant-numeric:tabular-nums}
+.lx-cmp{margin:8px 0 0;font-size:13px;padding:7px 12px;border-radius:12px;background:#0d1424;border-inline-start:4px solid var(--lx-warn)}
+.lx-cmp.ok{border-color:var(--lx-ok)}.lx-cmp.bad{border-color:var(--lx-bad)}
+.lx-warnline{margin:8px 0 0;font-size:13px;line-height:1.6;padding:8px 12px;border-radius:12px;background:rgba(240,176,60,.1);border:1px solid rgba(240,176,60,.4)}
+.lx-xbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.lx-xbtns button{min-height:48px;border-radius:14px;font-size:13px;font-weight:800;background:linear-gradient(180deg,#18233b,#111a2d);border:1px solid var(--lx-gold-line)}
+.lx-xbtns button.on{color:#fff;background:linear-gradient(180deg,#7a1d1d,#4a1010);border-color:#ff6b5b}
+
+/* ---------- الرحلات ---------- */
+.lx-recdot{width:12px;height:12px;border-radius:50%;background:#ff4433;box-shadow:0 0 10px #ff4433;animation:lxpulse 1.2s infinite}
+@keyframes lxpulse{50%{opacity:.35}}
+.lx-rec-card.on{border-color:rgba(255,68,51,.5)}
+.lx-tstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lx-tstats>div{padding:9px 10px;border-radius:13px;background:rgba(7,10,18,.6);border:1px solid rgba(34,48,80,.7)}
+.lx-tstats small{display:block;color:var(--text-dim);font-size:11.5px}
+.lx-tstats b{font-size:17px;font-weight:900;font-variant-numeric:tabular-nums}
+.lx-choice{display:grid;gap:8px;margin-top:10px}
+.lx-opt{display:block;text-align:start;padding:12px 14px;border-radius:14px;background:#0f1a2e;border:1px solid rgba(52,199,123,.45) !important}
+.lx-opt b{display:block;font-size:15px;font-weight:900;margin-bottom:3px}
+.lx-opt span{color:var(--text-dim);font-size:13px;line-height:1.6}
+.lx-opt.warn{border-color:rgba(240,176,60,.5) !important}
+.lx-opt.warn u{color:#ffcf6b}
+.lx-trip{display:block;width:100%;text-align:start;padding:12px 14px;margin-top:8px;border-radius:14px;background:#0f1729;border:1px solid var(--lx-line) !important}
+.lx-trip-n{display:block;font-weight:800}
+.lx-trip-n em{font-style:normal;font-size:11px;padding:1px 7px;border-radius:999px;background:rgba(82,199,255,.15);color:#8fdcff}
+.lx-trip-m{display:block;color:var(--text-dim);font-size:12.5px;margin-top:2px}
+.lx-detail>.lx-btn{margin-bottom:10px;flex:none}
+.lx-trk{display:block;width:100%;height:auto;max-height:260px;border-radius:14px;background:#0a1020;margin-bottom:10px}
+.lx-trk polyline{fill:none;stroke:#ffcc33;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.lx-trk .s{fill:#2bd47d;stroke:#04140b;stroke-width:2}.lx-trk .e{fill:#ff6b5b;stroke:#2a0905;stroke-width:2}
+.lx-chart{margin:10px 0 0;padding:8px 10px;border-radius:13px;background:#0a1020}
+.lx-chart figcaption{font-size:12.5px;color:var(--text-dim)}
+.lx-chart figcaption b{color:var(--text);font-variant-numeric:tabular-nums}
+.lx-chart svg{display:block;width:100%;height:80px}
+.lx-chart path{fill:none;stroke:#52c7ff;stroke-width:2;vector-effect:non-scaling-stroke}
+.lx-chart-empty{margin-top:10px;font-size:12.5px;color:var(--text-dim)}
+
+/* ---------- الخريطة ---------- */
+.lx-map{margin:0 -4px}
+.lx-mapwrap{position:relative;height:calc(100dvh - 230px - var(--lx-nav-h));min-height:300px;border-radius:var(--lx-r);overflow:hidden;border:1px solid var(--lx-gold-line);background:#070a12;touch-action:none}
+.lx-mapwrap canvas{display:block;touch-action:none}
+.lx-mtop{position:absolute;top:8px;inset-inline:8px;display:flex;justify-content:space-between;gap:6px;pointer-events:none}
+.lx-mtop span,.lx-mdest,.lx-mbot>span:not(.lx-scale),.lx-mdl{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;background:rgba(7,10,18,.82);border:1px solid var(--lx-line)}
+.lx-mdest{position:absolute;top:40px;inset-inline:8px;border-radius:12px;color:#ffe27a;line-height:1.5}
+.lx-mside{position:absolute;inset-inline-start:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+.lx-mside button{width:46px;height:46px;border-radius:14px;font-size:22px;font-weight:900;background:rgba(13,20,36,.9);border:1px solid var(--lx-gold-line)}
+.lx-mside button.lx-wide{font-size:11px;line-height:1.2;padding:2px}
+.lx-mside button.on{color:#1f1500;background:var(--lx-gold-grad)}
+.lx-north{position:absolute;inset-inline-end:10px;bottom:40px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;color:#ff6b5b;background:rgba(7,10,18,.85);border:1px solid var(--lx-line);transition:transform .15s}
+.lx-mbot{position:absolute;bottom:8px;inset-inline:8px;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;pointer-events:none}
+.lx-scale{position:relative;height:6px;border:2px solid #fff;border-top:0;min-width:20px}
+.lx-scale::after{content:attr(data-l);position:absolute;bottom:6px;inset-inline-start:0;font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 0 3px #000}
+.lx-mdl{position:absolute;bottom:40px;left:50%;transform:translateX(-50%)}
+.lx-mdl button{margin-inline-start:6px;padding:2px 10px;border-radius:999px;background:#3a1a1a}
+.lx-mbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.lx-mbar button{min-height:46px;padding:4px;border-radius:13px;font-size:12px;font-weight:800;background:linear-gradient(180deg,#18233b,#111a2d);border:1px solid var(--lx-line)}
+.lx-attr{margin:6px 4px 0;font-size:11px;color:var(--text-dim);line-height:1.6}
+
+/* ---------- وضع الصحراء: تباين عالٍ وأرقام كبيرة ---------- */
+html.lx-desert-on,html.lx-desert-on body{overflow:hidden}
+#lxDesert{position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));overflow:auto;
+  --dz-bg:#000;--dz-fg:#fff;--dz-acc:#ffd400;--dz-card:#111;--dz-line:#444;background:var(--dz-bg);color:var(--dz-fg);font-weight:800}
+#lxDesert.dz-sun{--dz-bg:#000;--dz-fg:#fff;--dz-acc:#ffe100;--dz-card:#0d0d0d;--dz-line:#fff}
+#lxDesert.dz-night{--dz-bg:#000;--dz-fg:#ff5a3c;--dz-acc:#ff3b1f;--dz-card:#0a0000;--dz-line:#5a1408}
+#lxDesert button{color:var(--dz-fg);background:var(--dz-card);border:2px solid var(--dz-line) !important;border-radius:16px;min-height:52px;font-size:16px;font-weight:900;padding:6px 10px}
+.dz-top{display:flex;gap:6px;align-items:center}
+.dz-top button{flex:0 0 auto}
+.dz-top button[data-d="close"]{width:52px;font-size:22px}
+.dz-dim{flex:1;display:flex;align-items:center;gap:6px;font-size:20px}
+.dz-dim input{flex:1;padding:0;background:none;border:0;accent-color:var(--dz-acc)}
+.dz-alert{padding:12px;border-radius:14px;font-size:19px;text-align:center;border:3px solid}
+.dz-alert.bad{background:#5a0000;color:#fff;border-color:#ff3b30;animation:lxpulse 1s infinite}
+.dz-alert.warn{background:#4a3500;color:#fff;border-color:#ffb800}
+.dz-alert.ok{background:#003d1c;color:#fff;border-color:#2bd47d}
+.dz-nav{display:flex;align-items:center;gap:12px;padding:8px;border:2px solid var(--dz-line);border-radius:20px;background:var(--dz-card)}
+.dz-nav svg{width:min(42vw,200px);height:min(42vw,200px);flex:0 0 auto}
+.dz-nav svg path{fill:var(--dz-acc);stroke:var(--dz-bg);stroke-width:2}
+.dz-nav svg.dim{opacity:.3}
+#lxDesert:not(.dz-eco) #dzArrow{transition:transform .25s linear}
+.dz-dist{min-width:0;display:flex;flex-direction:column;gap:4px}
+.dz-dist b{font-size:clamp(34px,11vw,64px);line-height:1;color:var(--dz-acc);font-variant-numeric:tabular-nums}
+.dz-dist span{font-size:19px;overflow-wrap:anywhere}
+.dz-dist small{font-size:14px;opacity:.85;line-height:1.5}
+.dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dz-grid>div{padding:10px 12px;border:2px solid var(--dz-line);border-radius:16px;background:var(--dz-card);min-width:0}
+.dz-grid small{display:block;font-size:14px;opacity:.85}
+.dz-grid b{display:block;font-size:clamp(26px,8.5vw,44px);line-height:1.15;font-variant-numeric:tabular-nums;white-space:pre-line;overflow-wrap:anywhere}
+.dz-grid .dz-crd b{font-size:clamp(18px,5.5vw,28px)}
+.dz-grid .dz-trip b{font-size:clamp(20px,6vw,32px)}
+.dz-bot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:auto}
+.dz-bot button{min-height:64px;font-size:16px}
+.dz-shade{position:fixed;inset:0;background:#000;pointer-events:none;opacity:0}
+@media (min-width:700px){.dz-grid{grid-template-columns:repeat(3,1fr)}}
