@@ -1839,7 +1839,7 @@
                 stopNav: function () { db().sel = null; persist(); S.arrived = false; paintBody(); },
                 save: function (kind) { doSave(kind || 'home'); }, repaint: function () { paintBody(); } };
             window.GBS_API = API;
-            function go(tab) { S.tab = tab; paintBody(); }
+            function go(tab) { S.tab = tab; paintBody(); try { window.dispatchEvent(new CustomEvent('gbs:tab', { detail: tab })); } catch (e) { } }
             function tick() {
                 if (!alive()) {
                     stopAll();
