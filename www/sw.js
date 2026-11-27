@@ -1,9 +1,9 @@
 /* عامل الخدمة: يخزّن ملفات التطبيق ليعمل بدون إنترنت. البحث بالاسم (nominatim) يبقى عبر الشبكة دائمًا. */
-const CACHE = 'gbs-v6';
+const CACHE = 'gbs-v7';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/luxe.css',
-  'js/shim.js', 'js/geo.js', 'js/store.js', 'js/gps-tool.js', 'js/trips.js', 'js/map.js', 'js/ext.js', 'js/luxe.js', 'js/app.js',
+  'js/shim.js', 'js/geo.js', 'js/store.js', 'js/gps-tool.js', 'js/trips.js', 'js/map.js', 'js/ext.js', 'js/luxe.js', 'js/app.js', 'js/back.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
 ];
 self.addEventListener('install', e => {
