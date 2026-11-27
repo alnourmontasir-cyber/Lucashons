@@ -1,5 +1,5 @@
 /* عامل الخدمة: يخزّن ملفات التطبيق ليعمل بدون إنترنت. البحث بالاسم (nominatim) يبقى عبر الشبكة دائمًا. */
-const CACHE = 'gbs-v5';
+const CACHE = 'gbs-v6';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'css/luxe.css',
@@ -7,7 +7,7 @@ const SHELL = [
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
 ];
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).then(() => c.add('fonts/fonts.css').catch(() => {}))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
