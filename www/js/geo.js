@@ -242,8 +242,10 @@
             };
             if (G && typeof G.watchPosition === 'function') {
                 let p;
-                /* على أندرويد (Capacitor) قيمة timeout في watchPosition تُستخدم كفاصل بين التحديثات، فنجعلها صغيرة لتصل المواقع بسرعة */
-                const oc = high ? { enableHighAccuracy: true, timeout: 1500, maximumAge: 0, interval: 1000 } : { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 };
+                /* على أندرويد (Capacitor) قيمة timeout في watchPosition تُستخدم كفاصل بين التحديثات، فنجعلها صغيرة لتصل المواقع بسرعة.
+                   [ثبات الإشارة] minimumUpdateInterval افتراضيه في Capacitor 6 = 5000 م.ث: كان يحدّ التحديثات بواحد كل ~5 ث
+                   فتبدو القراءة «قديمة» وتنقطع. نخفضه إلى ثانية واحدة */
+                const oc = high ? { enableHighAccuracy: true, timeout: 1500, maximumAge: 0, interval: 1000, minimumUpdateInterval: 1000 } : { enableHighAccuracy: false, timeout: 5000, maximumAge: 0, minimumUpdateInterval: 2000 };
                 try {
                     p = Promise.resolve(G.watchPosition(oc, function (pos, err) { if (err)
                         fail(err, tag);

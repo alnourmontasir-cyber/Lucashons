@@ -56,12 +56,32 @@
        فتبقى الأداة هي من يحدّثها كما كانت. نضيف فقط اتجاه الهاتف ومسار الحركة وعمر القراءة والمعايرة من live(). */
     var homeEl = null, dashEl = null, ZKEY = 'gbs.dialz';
     function dialZ() { try { var z = +localStorage.getItem(ZKEY); return z >= 1 && z <= 3 ? z : 1; } catch (e) { return 1; } }
-    var TRAVEL = { auto: { i: '🔄', t: 'تلقائي' }, car: { i: '🚗', t: 'سيارة' }, walk: { i: '🚶', t: 'مشي' } };
+    /* أيقونات خطية موحّدة (SVG داخلي — تعمل دون إنترنت) */
+    var IC = {
+        zoom: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+        auto: '<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>',
+        car: '<path d="M4 16.5V12l2.2-5h11.6L20 12v4.5"/><path d="M3.5 12h17M4 16.5h16"/><circle cx="7.5" cy="17" r="1.9"/><circle cx="16.5" cy="17" r="1.9"/>',
+        walk: '<circle cx="13" cy="4.2" r="2"/><path d="M9.5 21l2.3-6.5 3 2.8V21M8.5 12.5l2.3-4.3 3.2 2 2.2 3M10.8 8.2 7.6 11"/>',
+        cal: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.4"/><path d="M3.5 3.5v4.9h4.9"/><path d="M12 7.5V12l3 2"/>',
+        desert: '<circle cx="15.5" cy="7.5" r="3"/><path d="M2 19.5c3.2-4.2 7-4.2 10.5 0M9.5 19.5c3-3.3 7.4-3.3 12.5 0"/><path d="M5 9.5v5M5 11.5H3.5M5 12.5h1.5"/>',
+        go: '<path d="M12 2.5 19 21l-7-4-7 4z"/>',
+        stop: '<rect x="6" y="6" width="12" height="12" rx="2.5"/>',
+        pin: '<path d="M12 21.5s7-6.6 7-11.8A7 7 0 0 0 5 9.7c0 5.2 7 11.8 7 11.8z"/><circle cx="12" cy="9.7" r="2.5"/>',
+        route: '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/>'
+    };
+    function svg(k) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + '</svg>'; }
+    var TRAVEL = { auto: { i: 'auto', t: 'تلقائي' }, car: { i: 'car', t: 'سيارة' }, walk: { i: 'walk', t: 'مشي' } };
     function cellOf(body, id) { var b = body.querySelector('#' + id); return b ? b.closest('.gps-cell') : null; }
     function buildDash(body) {
         var panel = body.querySelector(':scope > .gps-panel'), dial = panel && panel.querySelector('.gps-dial');
         if (!panel || !dial) return null;
         panel.classList.add('lx-dash');
+        /* حالة الموقع (النقطة الخضراء/الحمراء) داخل اللوحة: صف علوي = الحالة + اسم الوجهة */
+        var top = document.createElement('div'); top.className = 'lx-top';
+        var loc = body.querySelector(':scope > .gps-loc'), dst = panel.querySelector(':scope > .gps-dst');
+        panel.insertBefore(top, panel.firstChild);
+        if (loc) { loc.classList.add('lx-locin'); top.appendChild(loc); }
+        if (dst) top.appendChild(dst);
         var mid = document.createElement('div');
         mid.className = 'lx-mid lx-z' + dialZ();
         dial.parentNode.insertBefore(mid, dial);
@@ -74,14 +94,14 @@
             + '<div class="lx-k k3" id="xK3"></div>'
             + '<div class="lx-k k4"><small>مسار الحركة</small><b id="xCourse">—</b></div>'
             + '<div class="lx-rail r1">'
-            + '<button type="button" data-x="zoom" title="حجم البوصلة" aria-label="حجم البوصلة"><i>⤢</i><span>الحجم</span></button>'
-            + '<button type="button" data-x="travel" title="وضع التنقل (لتقدير الوقت)" aria-label="وضع التنقل"><i id="xTrI">' + T0.i + '</i><span id="xTrT">' + T0.t + '</span></button>'
-            + '<button type="button" data-x="reset" title="إعادة ضبط معايرة البوصلة" aria-label="إعادة ضبط البوصلة"><i>↺</i><span>معايرة</span></button>'
+            + '<button type="button" data-x="zoom" title="حجم البوصلة" aria-label="حجم البوصلة"><i>' + svg('zoom') + '</i><span>الحجم</span></button>'
+            + '<button type="button" data-x="travel" title="وضع التنقل (لتقدير الوقت)" aria-label="وضع التنقل"><i id="xTrI">' + svg(T0.i) + '</i><span id="xTrT">' + T0.t + '</span></button>'
+            + '<button type="button" data-x="reset" title="إعادة ضبط معايرة البوصلة" aria-label="إعادة ضبط البوصلة"><i>' + svg('cal') + '</i><span>معايرة</span></button>'
             + '</div><div class="lx-rail r2">'
-            + '<button type="button" data-x="desert" title="وضع الصحراء" aria-label="وضع الصحراء"><i>🏜</i><span>صحراء</span></button>'
-            + '<button type="button" data-x="nav" class="' + (sel ? 'on' : '') + '" title="' + (sel ? 'إيقاف التوجيه' : 'بدء التوجيه') + '" aria-label="التوجيه"><i>' + (sel ? '⏹' : '▶') + '</i><span>' + (sel ? 'إيقاف' : 'توجيه') + '</span></button>'
-            + '<button type="button" data-x="dests" title="الوجهات" aria-label="الوجهات"><i>📍</i><span>وجهات</span></button>'
-            + '<button type="button" data-x="trips" title="الرحلات" aria-label="الرحلات"><i>〰</i><span>رحلات</span></button>'
+            + '<button type="button" data-x="desert" title="وضع الصحراء" aria-label="وضع الصحراء"><i>' + svg('desert') + '</i><span>صحراء</span></button>'
+            + '<button type="button" data-x="nav" class="' + (sel ? 'on' : '') + '" title="' + (sel ? 'إيقاف التوجيه' : 'بدء التوجيه') + '" aria-label="التوجيه"><i>' + svg(sel ? 'stop' : 'go') + '</i><span>' + (sel ? 'إيقاف' : 'توجيه') + '</span></button>'
+            + '<button type="button" data-x="dests" title="الوجهات" aria-label="الوجهات"><i>' + svg('pin') + '</i><span>وجهات</span></button>'
+            + '<button type="button" data-x="trips" title="الرحلات" aria-label="الرحلات"><i>' + svg('route') + '</i><span>رحلات</span></button>'
             + '</div>');
         var k2 = cellOf(body, 'gpsSpd'), k3 = cellOf(body, 'gpsAcc');
         if (k2) mid.querySelector('#xK2').appendChild(k2);
@@ -109,7 +129,7 @@
         } else if (k === 'travel') {
             var order = ['auto', 'car', 'walk'], cur = A.opt('travel') || 'auto', nx = order[(order.indexOf(cur) + 1) % 3];
             A.setOpt('travel', nx === 'auto' ? null : nx);
-            set2(b.querySelector('#xTrI'), TRAVEL[nx].i); set2(b.querySelector('#xTrT'), TRAVEL[nx].t);
+            b.querySelector('#xTrI').innerHTML = svg(TRAVEL[nx].i); set2(b.querySelector('#xTrT'), TRAVEL[nx].t);
             toast('وضع التنقل: ' + TRAVEL[nx].t + ' — يُستعمل لتقدير الوقت حين لا تتوفر سرعتك الحالية');
         } else if (k === 'reset') {
             showConfirm('إعادة ضبط البوصلة', 'سيُمسح تصحيح الاتجاه المحفوظ، ويعاير التطبيق البوصلة من جديد بعد دقيقة مشي أو قيادة. متابعة؟', function () { A.resetCal(); updHome(); });
@@ -268,13 +288,13 @@
         /* التنبيهات */
         var al = null, tb = T() && T().tb();
         if (!L.fix) al = { c: 'bad', t: 'بانتظار إشارة GPS…' };
-        else if (L.age > 10000) al = { c: 'bad', t: '⚠ انقطعت إشارة GPS ' + ago(L.age) + ' — القيم المعروضة قديمة' };
+        else if (L.age > 15000) al = { c: 'bad', t: '⚠ انقطعت إشارة GPS ' + ago(L.age) + ' — القيم المعروضة قديمة' };
         else if (L.fix.acc > 50) al = { c: 'warn', t: '⚠ دقة الموقع ضعيفة (±' + Math.round(L.fix.acc) + ' م)' };
         else if (tb && tb.off > 300 && sel && sel.id === 'gbs-trackback') al = { c: 'warn', t: '⚠ ابتعدت ' + A.fmtD(tb.off) + ' عن مسارك المسجّل' };
         else if (sel && L.fix && GEO.geodesic(L.fix.lat, L.fix.lng, sel.lat, sel.lng).m < Math.max(30, L.fix.acc)) al = { c: 'ok', t: '✔ وصلت تقريبًا إلى ' + sel.name };
         var ae = dEl.querySelector('#dzAlert');
         ae.hidden = !al; if (al) { ae.className = 'dz-alert ' + al.c; set('dzAlert', al.t); }
-        var lost = L.fix && L.age > 10000;
+        var lost = L.fix && L.age > 15000;
         if (lost && !lostBuzz) { lostBuzz = true; try { if (A.opt('vibrate') && navigator.vibrate) navigator.vibrate([300, 150, 300]); } catch (e) { } }
         if (!lost) lostBuzz = false;
     }

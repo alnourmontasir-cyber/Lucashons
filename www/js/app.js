@@ -25,6 +25,9 @@
     document.addEventListener('visibilitychange', ensureAlive);
     window.addEventListener('pageshow', ensureAlive);
 
+    /* [دون إنترنت] طلب تخزين دائم من البداية حتى لا يحذف النظام الوجهات والرحلات وبلاطات الخريطة عند امتلاء المساحة */
+    try { if (window.GBS_STORE) GBS_STORE.persist(); } catch (e) { }
+
     /* ---------- دليل الاستخدام (زر «؟») ---------- */
     function showGuide() {
         var d = F.tools.gps, g = d && d.guide;

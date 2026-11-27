@@ -981,12 +981,14 @@
                     })();
                 });
             }
+            /* [ثبات الإشارة] مهلة اعتبار القراءة «قديمة»: 10 ث (كانت 6 ث فتومض مع أي تأخر بسيط في الهاتف) */
+            const STALE_MS = 10000;
             async function doSave(kind, force) {
                 if (!S.pos || S.capBusy)
                     return;
                 /* [حماية الحفظ] لا نحفظ موقعًا قديمًا بصمت (بعد انقطاع الإشارة أو العودة من الخلفية) */
                 const ageMs = S.fix ? Date.now() - S.fix : Infinity;
-                if (!force && ageMs > 6000) {
+                if (!force && ageMs > STALE_MS) {
                     showConfirm('الموقع قديم', 'آخر قراءة GPS ' + (isFinite(ageMs) ? 'منذ ' + Math.round(ageMs / 1000) + ' ثانية' : 'غير متوفرة') + ' — قد لا يكون هذا مكانك الآن. الأفضل الانتظار حتى تعود الإشارة. هل تحاول الحفظ على أي حال؟', function () { doSave(kind, true); });
                     return;
                 }
@@ -1154,7 +1156,7 @@
             }
             /* [إصلاح] الموقع قديم؟ (لا قراءة منذ 6 ثوانٍ: بعد العودة من الخلفية، نفق، إشارة ضعيفة) → نعلّم الواجهة بدل عرضه كمباشر */
             function markStale() {
-                const stale = !S.fix || Date.now() - S.fix > 6000;
+                const stale = !S.fix || Date.now() - S.fix > STALE_MS;
                 const fr = $('gpsFrame');
                 if (fr)
                     fr.classList.toggle('gps-stale', stale);
@@ -1815,8 +1817,8 @@
                 return {
                     fix: p ? { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, alt: fin(p.coords.altitude) ? p.coords.altitude : null,
                         altAcc: fin(p.coords.altitudeAccuracy) ? p.coords.altitudeAccuracy : null, ts: p.timestamp } : null,
-                    fixAt: S.fix || 0, age: S.fix ? now - S.fix : null, stale: !S.fix || now - S.fix > 6000,
-                    spd: (S.fix && now - S.fix <= 6000) ? S.spd : null,
+                    fixAt: S.fix || 0, age: S.fix ? now - S.fix : null, stale: !S.fix || now - S.fix > STALE_MS,
+                    spd: (S.fix && now - S.fix <= STALE_MS) ? S.spd : null,
                     course: crOk ? { h: S.course.h, sp: S.course.sp } : null,
                     heading: hh, phone: (S.sh != null && now - S.shAt < 2500) ? GEO.wrap360(S.sh + (S.offN > 0 ? S.off : (+opt('decl') || 0))) : null,
                     sensor: { ori: S.ori, rel: !!S.rel, abs: !!S.absAt, offN: S.offN, off: S.off, cAcc: S.cAcc, live: S.sh != null && now - S.shAt < 2500 },
