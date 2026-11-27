@@ -681,3 +681,51 @@ html.lx-desert-on,html.lx-desert-on body{overflow:hidden}
 .gps-list .gps-act[data-cp]::after,.gps-list .gps-act[data-ed]::after,.gps-list .gps-act[data-del]::after{content:none}
 .gps-list .gps-act[data-del]{border-color:rgba(255,107,91,.35)}
 #gpsRecent .gps-selb{display:none}
+
+/* ======================================================================
+   لمسات احترافية: صف الحالة داخل اللوحة، أزرار تحكم بأيقونات خطية موحّدة، إطار HUD
+   ====================================================================== */
+.lx-top{display:flex;align-items:center;gap:8px;margin:0 0 4px;min-height:34px}
+#gpsBody .lx-top>.gps-loc.lx-locin{order:0;flex:0 1 auto;max-width:48%;margin:0;padding:5px 11px 5px 9px;gap:7px;border-radius:999px;
+  font-size:12.5px;font-weight:800;line-height:1.3;white-space:nowrap;overflow:hidden;
+  background:rgba(5,8,16,.7);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+#gpsBody .lx-top>.gps-loc.lx-locin #gpsLocTxt{overflow:hidden;text-overflow:ellipsis}
+#gpsBody .lx-top>.gps-loc.lx-locin .gps-age{font-size:11px}
+.lx-top>.gps-loc .gps-dot{width:10px;height:10px}
+.lx-top>.gps-dst{flex:1 1 auto;min-width:0;justify-content:center;margin:0;font-size:15px}
+.lx-top>.gps-dst span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* أزرار التحكم */
+.lx-rail{gap:6px}
+.lx-rail button{width:46px;height:46px;padding:3px 0 2px;border-radius:15px;gap:1px;
+  background:linear-gradient(160deg,rgba(32,43,68,.96),rgba(8,12,22,.96));border:1px solid rgba(242,183,5,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 6px 14px -4px rgba(0,0,0,.6);transition:transform .12s,border-color .2s,background .2s}
+.lx-rail button i{display:grid;place-items:center;height:21px}
+.lx-rail button svg{width:20px;height:20px;fill:none;stroke:var(--lx-gold-hi);stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.lx-rail button span{font-size:9.5px;font-weight:800;color:#d7cfb4;letter-spacing:.01em}
+.lx-rail button:hover{border-color:rgba(242,183,5,.55)}
+.lx-rail button:active{transform:scale(.93)}
+.lx-rail button[data-x="nav"]{background:var(--lx-gold-grad);border-color:transparent;box-shadow:0 6px 16px -6px rgba(242,183,5,.75),inset 0 1px 0 rgba(255,255,255,.5)}
+.lx-rail button[data-x="nav"] svg{stroke:#1f1500;fill:rgba(31,21,0,.15)}
+.lx-rail button[data-x="nav"] span{color:#2a1d00}
+.lx-rail button[data-x="nav"].on{background:linear-gradient(160deg,#5c1616,#300a0a);border:1px solid rgba(255,107,91,.65);box-shadow:0 6px 16px -6px rgba(255,80,60,.55)}
+.lx-rail button[data-x="nav"].on svg{stroke:#ff8b7c;fill:rgba(255,107,91,.18)}
+.lx-rail button[data-x="nav"].on span{color:#ffc2b9}
+/* إطار HUD: زوايا ذهبية رفيعة حول منطقة البوصلة */
+.lx-mid::before,.lx-mid::after{content:"";position:absolute;inset:2px;pointer-events:none;border-radius:14px;
+  background:
+    linear-gradient(var(--lx-gold),var(--lx-gold)) top left/16px 1.5px,linear-gradient(var(--lx-gold),var(--lx-gold)) top left/1.5px 16px,
+    linear-gradient(var(--lx-gold),var(--lx-gold)) top right/16px 1.5px,linear-gradient(var(--lx-gold),var(--lx-gold)) top right/1.5px 16px,
+    linear-gradient(var(--lx-gold),var(--lx-gold)) bottom left/16px 1.5px,linear-gradient(var(--lx-gold),var(--lx-gold)) bottom left/1.5px 16px,
+    linear-gradient(var(--lx-gold),var(--lx-gold)) bottom right/16px 1.5px,linear-gradient(var(--lx-gold),var(--lx-gold)) bottom right/1.5px 16px;
+  background-repeat:no-repeat;opacity:.45}
+.lx-mid::before,.lx-mid::after{display:none}
+.lx-k{padding:0 4px}
+.lx-k.k1,.lx-k.k2{top:6px}.lx-k.k3,.lx-k.k4{bottom:6px}
+.lx-k small,.lx-k .gps-cell small{letter-spacing:.02em}
+/* خانات الشريط: لا قصّ للنص */
+.lx-sgrid .gps-cell b{white-space:normal;overflow:visible;text-overflow:clip}
+.lx-sgrid .gps-cell .gps-sig,.lx-sgrid .gps-cell b{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+@media (max-width:370px){.lx-rail button{width:42px;height:43px;border-radius:13px}.lx-rail button svg{width:18px;height:18px}.lx-rail{gap:5px}}
+
+.lx-mid{padding-top:32px;padding-bottom:32px}
+@media (max-width:360px){.lx-mid{padding-top:34px;padding-bottom:34px}}
