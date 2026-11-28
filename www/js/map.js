@@ -13,7 +13,7 @@
     var MT_KEY = 'MrqN14UQN4hlsOYqcuZ6';
     var SRC = {
         mttopo: { name: 'تضاريس فائقة الدقة — MapTiler (خطوط كنتور وظلال وأسماء)', url: 'https://api.maptiler.com/maps/topo-v4/256/{z}/{x}/{y}@2x.png?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
-        mthyb: { name: 'قمر صناعي فائق الدقة + أسماء — MapTiler', url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}@2x.jpg?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
+        mthyb: { name: 'قمر صناعي فائق الدقة + أسماء — MapTiler', url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}@2x.jpg?key={key}', max: 20, hi: true, key: true, sat: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
         mtstr: { name: 'شوارع وأسماء فائقة الوضوح — MapTiler', url: 'https://api.maptiler.com/maps/streets-v4/256/{z}/{x}/{y}@2x.png?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
         osm: { name: 'طرق — OpenStreetMap', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19, attr: '© مساهمو OpenStreetMap', bulk: false },
         /* صور أقمار Sentinel-2 الخالية من السحب (EOX): مجانية دون مفتاح للاستخدام غير التجاري، دقتها الفعلية 10 م للبكسل
@@ -31,7 +31,8 @@
         /* مفتاح MapTiler المدمج بطلب صاحب التطبيق. أول تشغيل بعد التحديث: يُضبط المفتاح وتُختار طبقة القمر الصناعي + الأسماء.
            يمكن تغييره أو حذفه من زر «الطبقة» (القيمة المحفوظة على الهاتف لها الأولوية). */
         /* v2: تفتح الخريطة على «تضاريس فائقة الدقة» بأعلى دقة (مرة واحدة بعد التحديث؛ بعدها يُحترم اختيار المستخدم) */
-        if (!o || o.v !== 2) { if (!o || !('mtkey' in o)) d.mtkey = MT_KEY; d.src = 'mttopo'; d.hd = true; d.v = 2; }
+        /* v3: تفتح على «قمر صناعي فائق الدقة + أسماء» بطلب صاحب التطبيق (مرة واحدة بعد التحديث؛ بعدها يُحترم اختيار المستخدم) */
+        if (!o || !(o.v >= 3)) { if (!o || !('mtkey' in o)) d.mtkey = MT_KEY; d.src = 'mthyb'; d.hd = true; d.v = 3; }
         if (!SRC[d.src]) d.src = 'osm';
         return d;
     }
@@ -322,7 +323,42 @@
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 7); ctx.fill();
             ctx.fillStyle = L.stale ? '#98a3bb' : '#1e9bff'; ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, 7); ctx.fill(); ctx.restore();
         }
+        /* أداة القياس */
+        if (meas && meas.pts.length) {
+            var mq = meas.pts.map(function (q) { return P(q.lat, q.lng); });
+            ctx.save(); ctx.lineJoin = ctx.lineCap = 'round';
+            if (mq.length >= 3) { ctx.fillStyle = 'rgba(255,204,51,.14)'; ctx.beginPath(); mq.forEach(function (q, i) { i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath(); ctx.fill(); }
+            ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 6 * k; ctx.beginPath(); mq.forEach(function (q, i) { i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.stroke();
+            ctx.strokeStyle = '#ffcc33'; ctx.lineWidth = 3 * k; ctx.setLineDash([10 * k, 6 * k]); ctx.stroke(); ctx.setLineDash([]);
+            ctx.restore();
+            mq.forEach(function (q, i) {
+                upright(q, k, r, function () {
+                    ctx.fillStyle = i === 0 ? '#2bd47d' : '#ffcc33'; ctx.strokeStyle = '#1f1500'; ctx.lineWidth = 2.5;
+                    ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fill(); ctx.stroke();
+                    if (i && i === mq.length - 1) {
+                        var tx = fmtD(measLen());
+                        ctx.font = '900 13px Tajawal, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 3.5;
+                        ctx.strokeText(tx, 0, -14); ctx.fillText(tx, 0, -14);
+                    }
+                });
+            });
+        }
+        /* نقطة الضغط المطوّل / نتيجة البحث بالإحداثيات */
+        if (lp) upright(P(lp.lat, lp.lng), k, r, function () {
+            ctx.fillStyle = '#52c7ff'; ctx.strokeStyle = '#03131f'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-11, -13, -11, -26, 0, -28); ctx.bezierCurveTo(11, -26, 11, -13, 0, 0); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#03131f'; ctx.beginPath(); ctx.arc(0, -18, 4, 0, 7); ctx.fill();
+        });
         ctx.restore();
+        /* علامة وسط الخريطة (عند تحريكها يدويًا) */
+        if (!cfg.follow) {
+            ctx.save(); ctx.translate(W / 2, H / 2); ctx.lineCap = 'round';
+            [['rgba(0,0,0,.75)', 4.5], ['#ffcc33', 2]].forEach(function (st) {
+                ctx.strokeStyle = st[0]; ctx.lineWidth = st[1]; ctx.beginPath();
+                ctx.moveTo(-17, 0); ctx.lineTo(-6, 0); ctx.moveTo(6, 0); ctx.lineTo(17, 0); ctx.moveTo(0, -17); ctx.lineTo(0, -6); ctx.moveTo(0, 6); ctx.lineTo(0, 17); ctx.stroke();
+            });
+            ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(0, 0, 1.8, 0, 7); ctx.fill(); ctx.restore();
+        }
         hud(c, zi, missing, shown, L, ts);
         if (again) redraw();
     }
@@ -371,13 +407,15 @@
         if (bar) { bar.style.width = Math.round(sl / m) + 'px'; bar.setAttribute('data-l', sl >= 1000 ? (sl / 1000) + ' كم' : sl + ' م'); }
         var s = src(), msg = '';
         if (!s.url) msg = 'بدون خلفية: الشبكة والمسار والوجهات فقط';
-        else if (missing) msg = (navigator.onLine ? 'تعذّر تحميل بعض البلاطات' : 'دون اتصال') + ' — المناطق المخطّطة غير منزّلة';
         else if (src().key && !cfg.mtkey) msg = 'أدخل مفتاح MapTiler من زر «الطبقة» لعرض هذه الطبقة';
-        else if (keyErr === 429) msg = 'انتهى الحد المجاني لهذا الشهر في MapTiler — تُعرض البلاطات المحفوظة فقط';
-        else if (keyErr) msg = 'MapTiler رفض المفتاح — تأكد منه في زر «الطبقة»';
+        else if (keyErr === 429 && src().key) msg = 'انتهى الحد المجاني لهذا الشهر في MapTiler — تُعرض البلاطات المحفوظة فقط';
+        else if (keyErr && src().key) msg = 'MapTiler رفض المفتاح — تأكد منه في زر «الطبقة»';
+        else if (missing) msg = (navigator.onLine ? 'تعذّر تحميل بعض البلاطات' : 'دون اتصال') + ' — المناطق المخطّطة غير منزّلة';
+        else if (src().sat && cfg.z >= 18) msg = 'دقة صور الأقمار المتوفرة هنا حوالي 1–2 م: التكبير أكثر يُكبّر الصورة فقط ولا يضيف تفاصيل';
         else if (ts && ts.alt) msg = 'تُعرض بلاطات محفوظة من طبقة أخرى لهذه المنطقة';
         else if (!navigator.onLine) msg = 'دون اتصال — تُعرض البلاطات المحفوظة فقط';
         set('mpMsg', msg);
+        toolsHud(c, L);
         var mm = host && host.querySelector('#mpMsg'); if (mm) mm.hidden = !msg;
         var fb = host && host.querySelector('[data-m="follow"]'); if (fb) fb.classList.toggle('on', !!cfg.follow);
         var ub = host && host.querySelector('[data-m="up"]'); if (ub) { ub.classList.toggle('on', cfg.up === 'head'); ub.textContent = cfg.up === 'head' ? '⬆ الاتجاه' : 'N شمال'; }
@@ -390,7 +428,7 @@
     }
 
     /* ---------- التفاعل: سحب / تكبير بإصبعين / عجلة ---------- */
-    var ptrs = new Map(), pinch = null, lastTap = 0;
+    var ptrs = new Map(), pinch = null, lastTap = 0, press = null, lpTimer = 0;
     function panBy(dx, dy) {
         var r = rot(), cs = Math.cos(r), sn = Math.sin(r);
         var rx = dx * cs - dy * sn, ry = dx * sn + dy * cs;
@@ -409,17 +447,162 @@
         cv.addEventListener('pointerdown', function (e) {
             try { cv.setPointerCapture(e.pointerId); } catch (er) { } ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (ptrs.size === 2) { var a = Array.from(ptrs.values()); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), z: cfg.z }; }
-            if (ptrs.size === 1) { var t = Date.now(); if (t - lastTap < 300) animZoom(Math.round(cfg.z) + 1); lastTap = t; }
+            if (ptrs.size === 1) {
+                var t = Date.now(); if (!meas && t - lastTap < 300) animZoom(Math.round(cfg.z) + 1); lastTap = t;
+                var rc = cv.getBoundingClientRect();
+                press = { x: e.clientX, y: e.clientY, px: e.clientX - rc.left, py: e.clientY - rc.top, t: t, moved: false };
+                clearTimeout(lpTimer);
+                lpTimer = setTimeout(function () { if (press && !press.moved && ptrs.size === 1) { var q = ptLL(press.px, press.py); press = null; lp = q; redraw(); try { navigator.vibrate && navigator.vibrate(25); } catch (er) { } ptSheet(q, 'نقطة على الخريطة'); } }, 550);
+            } else { clearTimeout(lpTimer); press = null; }
         });
         cv.addEventListener('pointermove', function (e) {
             var p = ptrs.get(e.pointerId); if (!p) return;
+            if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 9) { press.moved = true; clearTimeout(lpTimer); }
+            if (press && !press.moved) return; /* لا تحريك قبل تجاوز 9 بكسل: الضغطة تبقى ضغطة */
             if (ptrs.size === 1) { panBy(e.clientX - p.x, e.clientY - p.y); }
             p.x = e.clientX; p.y = e.clientY;
             if (ptrs.size === 2 && pinch) { var a = Array.from(ptrs.values()), d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); if (pinch.d > 10) zoomTo(pinch.z + Math.log2(d / pinch.d)); }
         });
-        var up = function (e) { ptrs.delete(e.pointerId); if (ptrs.size < 2 && pinch) { pinch = null; animZoom(cfg.z); } saveCfg(); };
+        var up = function (e) {
+            clearTimeout(lpTimer);
+            if (press && !press.moved && e.type === 'pointerup' && ptrs.size === 1 && Date.now() - press.t < 450) {
+                if (meas) { meas.pts.push(ptLL(press.px, press.py)); redraw(); }
+                else if (lp) { lp = null; redraw(); }
+            }
+            press = null;
+            ptrs.delete(e.pointerId); if (ptrs.size < 2 && pinch) { pinch = null; animZoom(cfg.z); } saveCfg(); };
         cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
         cv.addEventListener('wheel', function (e) { e.preventDefault(); animZoom(Math.round(cfg.z) - Math.sign(e.deltaY)); }, { passive: false });
+    }
+
+    /* ---------- أدوات الخريطة: الوسط، الضغط المطوّل، القياس، البحث بالإحداثيات، فحص الحفظ ---------- */
+    var meas = null, lp = null;
+    function G2(a, b) { return GEO.geodesic(a.lat, a.lng, b.lat, b.lng); }
+    function fmtD(m) { var A = api(); return A ? A.fmtD(m) : Math.round(m) + ' م'; }
+    function dirL(b) { var A = api(); return A ? A.dirLbl(b) : ''; }
+    function fmtC(p) { var A = api(); return A && A.fmtCoord ? A.fmtCoord(p.lat, true) + ', ' + A.fmtCoord(p.lng, false) : p.lat.toFixed(6) + ', ' + p.lng.toFixed(6); }
+    /* نقطة على الشاشة (بكسل CSS داخل الخريطة) ← خط عرض/طول، مع مراعاة التدوير */
+    function ptLL(px, py) {
+        var r = rot(), cs = Math.cos(r), sn = Math.sin(r), dx = px - W / 2, dy = py - H / 2;
+        var rx = dx * cs - dy * sn, ry = dx * sn + dy * cs;
+        var zi = Math.floor(cfg.z), sc = Math.pow(2, cfg.z - zi), c = center();
+        return { lat: latOf(wy(c.lat, zi) + ry / sc, zi), lng: ((lngOf(wx(c.lng, zi) + rx / sc, zi) + 540) % 360) - 180 };
+    }
+    function measLen() { var m = 0; if (meas) for (var i = 1; i < meas.pts.length; i++) m += G2(meas.pts[i - 1], meas.pts[i]).m; return m; }
+    function measArea() {
+        if (!meas || meas.pts.length < 3) return 0;
+        var R = 6371008.8, la0 = meas.pts[0].lat * Math.PI / 180, lo0 = meas.pts[0].lng, a = 0;
+        var xy = meas.pts.map(function (q) { return [R * ((((q.lng - lo0) + 540) % 360) - 180) * Math.PI / 180 * Math.cos(la0), R * (q.lat - meas.pts[0].lat) * Math.PI / 180]; });
+        for (var i = 0; i < xy.length; i++) { var j = (i + 1) % xy.length; a += xy[i][0] * xy[j][1] - xy[j][0] * xy[i][1]; }
+        return Math.abs(a) / 2;
+    }
+    function fmtA(m2) { return m2 < 10000 ? Math.round(m2) + ' م²' : m2 < 1e6 ? (m2 / 1e4).toFixed(2) + ' هكتار' : (m2 / 1e6).toFixed(2) + ' كم²'; }
+    function fromMe(p) {
+        var L = api() && api().live();
+        if (!L || !L.fix) return '';
+        var g = GEO.geodesic(L.fix.lat, L.fix.lng, p.lat, p.lng);
+        return fmtD(g.m) + ' · ' + Math.round(g.brg) + '° ' + dirL(g.brg);
+    }
+    function toolsHud(c, L) {
+        if (!host) return;
+        var x = host.querySelector('#mpX'), mm = host.querySelector('#mpMeas');
+        if (x) {
+            x.hidden = !!(cfg.follow || meas);
+            if (!x.hidden) { var f = fromMe(c); setT(x.querySelector('#mpXt'), f ? 'الوسط يبعد ' + f : 'وسط الخريطة: ' + c.lat.toFixed(5) + ', ' + c.lng.toFixed(5)); }
+        }
+        if (mm) {
+            mm.hidden = !meas;
+            if (meas) {
+                var n = meas.pts.length, ar = measArea();
+                setT(mm.querySelector('#mpMt'), n < 2 ? (n ? 'اضغط نقطة أخرى على الخريطة' : 'اضغط على الخريطة لإضافة نقاط') : 'المسافة ' + fmtD(measLen()) + ' · ' + n + ' نقاط' + (ar ? ' · المساحة ' + fmtA(ar) : ''));
+                var ub = mm.querySelector('[data-m="mundo"]'); if (ub) ub.disabled = !n;
+            }
+        }
+        var mb = host.querySelector('[data-m="meas"]'); if (mb) mb.classList.toggle('on', !!meas);
+    }
+    function setT(el, t) { if (el && el.textContent !== t) el.textContent = t; }
+    function navTo(p, name) {
+        var A = api(); if (!A) return;
+        var d = A.upsertDest({ id: 'gbs-mappt', name: name || 'نقطة من الخريطة', emoji: '🎯', lat: p.lat, lng: p.lng });
+        closeSheet(); A.pickDest(d.id); toast('السهم الآن يشير إلى النقطة');
+    }
+    function saveAs(p, def) {
+        var nm = prompt('اسم الوجهة\n' + p.lat.toFixed(6) + ', ' + p.lng.toFixed(6), def || 'نقطة من الخريطة');
+        if (!nm || !nm.trim()) return;
+        api().upsertDest({ name: nm.trim().slice(0, 60), emoji: '📍', lat: p.lat, lng: p.lng });
+        closeSheet(); toast('حُفظت في الوجهات'); redraw();
+    }
+    function closeSheet() { var s = document.getElementById('sheetBackdrop'); if (s) s.classList.remove('active'); }
+    function ptSheet(p, title) {
+        var f = fromMe(p);
+        var b = sheet(title, '<div class="lx-pt"><b dir="ltr">' + esc(fmtC(p)) + '</b>'
+            + (f ? '<span>من موقعك: ' + esc(f) + '</span>' : '<span>موقعك غير متاح الآن لحساب المسافة</span>') + '</div>'
+            + '<div class="lx-ptb">'
+            + '<button type="button" class="btn btn-primary" data-p="go">🎯 توجّه إليها</button>'
+            + '<button type="button" class="btn btn-ghost" data-p="save">📍 حفظ كوجهة</button>'
+            + '<button type="button" class="btn btn-ghost" data-p="copy">📋 نسخ الإحداثيات</button>'
+            + '<button type="button" class="btn btn-ghost" data-p="meas">📏 قياس من هنا</button>'
+            + '<button type="button" class="btn btn-ghost" data-p="ctr">⊕ توسيط الخريطة هنا</button>'
+            + '</div><p class="hint">«توجّه إليها» تجعل السهم في الرئيسية يشير إلى النقطة مباشرة (خط مستقيم وليس طريقًا).</p>');
+        b.onclick = function (e) {
+            var k = e.target.closest('[data-p]'); if (!k) return;
+            switch (k.getAttribute('data-p')) {
+                case 'go': lp = null; navTo(p); break;
+                case 'save': saveAs(p); break;
+                case 'copy': api().copyCoords(p); break;
+                case 'meas': lp = null; meas = { pts: [p] }; closeSheet(); redraw(); break;
+                case 'ctr': cfg.follow = false; cfg.lat = p.lat; cfg.lng = p.lng; saveCfg(); closeSheet(); redraw(); break;
+            }
+        };
+    }
+    function findSheet() {
+        var b = sheet('الذهاب إلى إحداثيات', '<input id="mpFind" dir="ltr" autocomplete="off" placeholder="15.500700, 32.559900">'
+            + '<p class="hint">يقبل: أرقامًا عشرية (15.5007, 32.5599)، أو درجات ودقائق وثوانٍ (15°30\'02"N 32°33\'35"E)، أو رابط خرائط Google أو أي رابط فيه الإحداثيات، بالأرقام العربية أو الإنجليزية. يعمل دون إنترنت.</p>'
+            + '<div class="row"><button type="button" class="btn btn-primary" id="mpFindGo">اذهب</button></div>');
+        var inp = b.querySelector('#mpFind');
+        function goFind() {
+            var A = api(), q = A && A.parseLL ? A.parseLL(inp.value) : null;
+            if (!q) { toast('لم أتعرف على الإحداثيات — راجع الصيغة'); return; }
+            cfg.follow = false; cfg.lat = q.lat; cfg.lng = q.lng; lp = q; saveCfg();
+            if (cfg.z < 15) animZoom(15); else redraw();
+            ptSheet(q, 'الإحداثيات');
+        }
+        b.querySelector('#mpFindGo').onclick = goFind;
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') goFind(); });
+        setTimeout(function () { try { inp.focus(); } catch (e) { } }, 50);
+    }
+    /* فحص الحفظ: نسبة بلاطات المنطقة الظاهرة المحفوظة على الهاتف لكل مستوى تكبير (نفس البلاطات التي سيعرضها التطبيق دون اتصال) */
+    function coverage() {
+        var s = src();
+        var b = sheet('فحص الحفظ للعمل دون إنترنت', '<p class="hint">جارٍ فحص المنطقة الظاهرة…</p>');
+        if (!s.url || !tileURL(s, 0, 0, 0)) { b.innerHTML = '<p>هذه الطبقة لا تستخدم بلاطات محفوظة.</p>'; return Promise.resolve(); }
+        if (!cacheOk) { b.innerHTML = '<p>هذا الجهاز لا يدعم حفظ البلاطات.</p>'; return Promise.resolve(); }
+        var c = center(), z0 = Math.round(cfg.z), levels = [];
+        for (var Z = Math.max(2, z0 - 3); Z <= Math.min(s.max, z0 + 2); Z++) levels.push(Z);
+        var rows = [];
+        return cache().then(function (cc) {
+            return levels.reduce(function (pr, Z) {
+                return pr.then(function () {
+                    var zt = tileZ(s, Z), sc = Math.pow(2, Z - zt), n = Math.pow(2, zt), cx = wx(c.lng, zt), cy = wy(c.lat, zt), hw = W / 2 / sc, hh = H / 2 / sc, us = [];
+                    for (var y = Math.max(0, Math.floor((cy - hh) / TS)); y <= Math.min(n - 1, Math.floor((cy + hh) / TS)); y++)
+                        for (var x = Math.floor((cx - hw) / TS); x <= Math.floor((cx + hw) / TS); x++) us.push(tileURL(s, zt, ((x % n) + n) % n, y));
+                    return Promise.all(us.map(function (u) { return cc.match(ck(u)).then(function (h) { return h ? 1 : 0; }, function () { return 0; }); }))
+                        .then(function (r) { rows.push({ Z: Z, ok: r.reduce(function (a, v) { return a + v; }, 0), tot: us.length }); });
+                });
+            }, Promise.resolve());
+        }).then(function () {
+            var html = '<p class="hint">الطبقة: <b>' + esc(s.name) + '</b> — المنطقة الظاهرة الآن على الشاشة.</p><div class="lx-cov">';
+            rows.forEach(function (r) {
+                var pc = r.tot ? Math.round(r.ok * 100 / r.tot) : 0, cl = pc >= 100 ? 'ok' : pc >= 50 ? 'mid' : 'no';
+                html += '<div class="lx-covr' + (r.Z === z0 ? ' cur' : '') + '"><span>تكبير ' + r.Z + (r.Z === z0 ? ' (الحالي)' : '') + '</span><i class="' + cl + '"><b style="width:' + pc + '%"></b></i><em>' + pc + '%</em></div>';
+            });
+            var full = rows.filter(function (r) { return r.ok === r.tot; }).map(function (r) { return r.Z; });
+            html += '</div><p class="hint">' + (full.length ? 'محفوظة بالكامل في مستويات التكبير: ' + full.join('، ') + '.' : 'المنطقة غير محفوظة بالكامل في أي مستوى.')
+                + ' لحفظ ما ينقص: وأنت متصل، كبّر وصغّر وحرّك الخريطة فوق المنطقة حتى تكتمل النسب، ثم أعد الفحص.</p>'
+                + '<div class="row"><button type="button" class="btn btn-ghost" id="mpCovAgain">إعادة الفحص</button></div>';
+            b.innerHTML = html;
+            b.querySelector('#mpCovAgain').onclick = coverage;
+        }).catch(function () { b.innerHTML = '<p>تعذّر الفحص على هذا الجهاز.</p>'; });
     }
 
     /* ---------- التنزيل المسبق (للمصدر المخصّص فقط) ---------- */
@@ -498,9 +681,9 @@
             var v = b.querySelector('#mpKey').value.replace(/\s+/g, '');
             if (v && !/^[A-Za-z0-9_-]{8,64}$/.test(v)) { toast('المفتاح غير صحيح — انسخه كما هو من موقع MapTiler'); return; }
             cfg.mtkey = v; keyErr = 0; queue.length = 0;
-            if (v && !SRC[cfg.src].key) { cfg.src = 'mttopo'; var rb = b.querySelector('input[name="mpsrc"][value="mttopo"]'); if (rb) rb.checked = true; b.querySelector('#mpCust').hidden = true; }
+            if (v && !SRC[cfg.src].key) { cfg.src = 'mthyb'; var rb = b.querySelector('input[name="mpsrc"][value="mthyb"]'); if (rb) rb.checked = true; b.querySelector('#mpCust').hidden = true; }
             saveCfg(); redraw();
-            b.querySelector('#mpKeySt').textContent = v ? 'تم الحفظ على هذا الهاتف — الطبقة الآن: تضاريس فائقة الدقة.' : 'حُذف المفتاح من الهاتف.';
+            b.querySelector('#mpKeySt').textContent = v ? 'تم الحفظ على هذا الهاتف — الطبقة الآن: قمر صناعي فائق الدقة + أسماء.' : 'حُذف المفتاح من الهاتف.';
             toast(v ? 'تم حفظ المفتاح' : 'حُذف المفتاح');
         });
         b.querySelector('#mpUrl').addEventListener('change', function () {
@@ -545,11 +728,15 @@
                 + '<button type="button" data-m="up" class="lx-wide"></button>'
                 + '</div>'
                 + '<i id="mpNorth" class="lx-north">N</i>'
+                + '<div class="lx-mtool" id="mpX" hidden><span id="mpXt"></span><button type="button" data-m="xgo">🎯 توجّه</button><button type="button" data-m="xmenu" aria-label="خيارات الوسط">⋯</button></div>'
+                + '<div class="lx-mtool lx-mmeas" id="mpMeas" hidden><span id="mpMt"></span><button type="button" data-m="mundo">تراجع</button><button type="button" data-m="mclr">مسح</button><button type="button" data-m="mend">إنهاء</button></div>'
                 + '<div class="lx-mbot"><span id="mpScale" class="lx-scale"></span><span id="mpMsg" hidden></span></div>'
                 + '<div id="mpDl" class="lx-mdl" hidden></div></div>'
                 + '<div class="lx-mbar">'
-                + '<button type="button" data-m="layers">🗺 الطبقة</button><button type="button" data-m="save">📍 حفظ المركز كوجهة</button>'
+                + '<button type="button" data-m="layers">🗺 الطبقة</button><button type="button" data-m="save">📍 حفظ المركز</button>'
                 + '<button type="button" data-m="dl">⬇️ تنزيل المنطقة</button><button type="button" data-m="trip">〰 المسار</button>'
+                + '<button type="button" data-m="meas">📏 قياس</button><button type="button" data-m="find">🔎 إحداثيات</button>'
+                + '<button type="button" data-m="cov">✅ فحص الحفظ</button><button type="button" data-m="ccopy">📋 نسخ الوسط</button>'
                 + '</div>'
                 + '<p class="lx-attr"><span id="mpAttr"></span>الخط الأصفر المتقطع = اتجاه مباشر وليس طريقًا. الخريطة للمساعدة فقط؛ البوصلة والسهم يعملان دونها.</p>';
             body.appendChild(host);
@@ -566,6 +753,15 @@
                     case 'save': saveCenter(); break;
                     case 'dl': startDownload(); break;
                     case 'dlstop': if (dl) dl.stop = true; break;
+                    case 'meas': meas = meas ? null : { pts: [] }; lp = null; if (meas) toast('اضغط على الخريطة لإضافة نقاط القياس'); redraw(); break;
+                    case 'mundo': if (meas) { meas.pts.pop(); redraw(); } break;
+                    case 'mclr': if (meas) { meas.pts = []; redraw(); } break;
+                    case 'mend': meas = null; redraw(); break;
+                    case 'find': findSheet(); break;
+                    case 'cov': coverage(); break;
+                    case 'ccopy': api().copyCoords(center()); break;
+                    case 'xgo': navTo(center()); break;
+                    case 'xmenu': ptSheet(center(), 'وسط الخريطة'); break;
                     case 'trip': {
                         var T = window.GBS_TRIPS, t = focusTrip || (T && (T.current() || T.list()[0]));
                         if (t && t.pts.length) { focusTrip = t === (T && T.current()) ? null : t; fitTrip(t); } else toast('لا يوجد مسار مسجّل لعرضه');
@@ -587,7 +783,8 @@
         update: function () { redraw(); },
         focus: function (k, t) { pendingFocus = { k: k, t: t }; },
         tileCount: tileCount,
-        _proj: { wx: wx, wy: wy, latOf: latOf, lngOf: lngOf }
+        _proj: { wx: wx, wy: wy, latOf: latOf, lngOf: lngOf },
+        _tools: { ptLL: ptLL, measLen: measLen, measArea: measArea, coverage: coverage }
     };
     window.addEventListener('online', redraw);
     window.addEventListener('offline', redraw);
