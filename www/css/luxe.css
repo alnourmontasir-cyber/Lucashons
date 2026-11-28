@@ -765,3 +765,28 @@ html.lx-desert-on,html.lx-desert-on body{overflow:hidden}
   .lx-galt b{font-size:12px}
   .lx-dash .lx-act #gpsHomeSave,.lx-dash .lx-act #gpsShare{font-size:13px;padding:0 8px}
 }
+
+/* ========== أدوات الخريطة ========== */
+.lx-mtool{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;z-index:3;display:flex;align-items:center;gap:6px;max-width:calc(100% - 24px);padding:5px 5px 5px 12px;border-radius:999px;background:rgba(5,8,16,.86);border:1px solid rgba(242,183,5,.45);box-shadow:0 8px 20px -10px #000;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.lx-mtool[hidden]{display:none}
+.lx-mtool span{font-size:12.5px;font-weight:800;color:#fff3c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-inline-start:4px}
+.lx-mtool button{flex:0 0 auto;min-height:34px;padding:0 11px;border-radius:999px;font-size:12.5px;font-weight:900;color:#1a1200;background:linear-gradient(180deg,#ffd75e,#f2b705);border:0}
+.lx-mtool button[data-m="xmenu"],.lx-mmeas button{color:var(--lx-gold);background:#141d31;border:1px solid rgba(242,183,5,.4)}
+.lx-mmeas button[data-m="mend"]{color:#1a1200;background:linear-gradient(180deg,#ffd75e,#f2b705);border:0}
+.lx-mtool button:disabled{opacity:.4}
+.lx-mbar button.on{color:#1a1200;background:linear-gradient(180deg,#ffd75e,#f2b705);border-color:transparent}
+.lx-pt{display:flex;flex-direction:column;gap:4px;padding:10px 12px;margin-bottom:10px;border-radius:12px;background:rgba(5,8,16,.55);border:1px solid rgba(242,183,5,.2)}
+.lx-pt b{font-family:"Roboto Mono",ui-monospace,monospace;font-size:15px;color:#fff3c4;text-align:left}
+.lx-pt span{font-size:13px;color:var(--text-dim);font-weight:700}
+.lx-ptb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lx-ptb .btn{min-height:46px;font-size:13.5px;font-weight:800}
+.lx-ptb [data-p="go"]{grid-column:1/-1}
+.lx-cov{display:flex;flex-direction:column;gap:7px;margin:8px 0}
+.lx-covr{display:grid;grid-template-columns:96px 1fr 44px;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.lx-covr.cur span{color:var(--lx-gold)}
+.lx-covr i{height:10px;border-radius:6px;background:#1a2338;overflow:hidden}
+.lx-covr i b{display:block;height:100%;border-radius:6px;background:#e5484d}
+.lx-covr i.mid b{background:#f2b705}.lx-covr i.ok b{background:#2bd47d}
+.lx-covr em{font-style:normal;text-align:left;font-family:"Roboto Mono",ui-monospace,monospace}
+.lx-mtool{border-radius:20px}
+.lx-mtool span{white-space:normal;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
