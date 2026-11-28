@@ -2,7 +2,7 @@
    حتى يعمل التطبيق دون أي اتصال بالإنترنت. إن فشل التنزيل يبقى التطبيق يعمل بخط الهاتف. */
 const fs = require('fs'), path = require('path');
 const OUT = path.join(__dirname, '..', 'www', 'fonts');
-const CSS_URL = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cinzel:wght@700;900&family=Amiri:wght@700&display=swap';
+const CSS_URL = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cinzel:wght@700;900&family=Amiri:wght@700&family=Roboto+Mono:wght@500;700&display=swap';
 const UA = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36';
 (async () => {
   const r = await fetch(CSS_URL, { headers: { 'User-Agent': UA } });
