@@ -8,7 +8,13 @@
     'use strict';
     var F = window.FUN, esc = function (s) { return F.esc(s); };
     var KEY = 'gbs.map', CACHE = 'gbs-tiles-v1';
+    /* طبقات MapTiler: بلاطات @2x (512 بكسل) مرسومة لشاشات الهواتف الدقيقة، وتحتاج مفتاحًا يُدخله المستخدم ويُحفظ على هاتفه فقط
+       (لا يُكتب أي مفتاح في ملفات التطبيق). شروطهم: حفظ شخصي على الجهاز مسموح، والتنزيل الجماعي ممنوع → bulk:false */
+    var MT_KEY = 'MrqN14UQN4hlsOYqcuZ6';
     var SRC = {
+        mttopo: { name: 'تضاريس فائقة الدقة — MapTiler (خطوط كنتور وظلال وأسماء)', url: 'https://api.maptiler.com/maps/topo-v4/256/{z}/{x}/{y}@2x.png?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
+        mthyb: { name: 'قمر صناعي فائق الدقة + أسماء — MapTiler', url: 'https://api.maptiler.com/maps/hybrid/256/{z}/{x}/{y}@2x.jpg?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
+        mtstr: { name: 'شوارع وأسماء فائقة الوضوح — MapTiler', url: 'https://api.maptiler.com/maps/streets-v4/256/{z}/{x}/{y}@2x.png?key={key}', max: 20, hi: true, key: true, attr: '© MapTiler · © مساهمو OpenStreetMap', bulk: false },
         osm: { name: 'طرق — OpenStreetMap', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19, attr: '© مساهمو OpenStreetMap', bulk: false },
         /* صور أقمار Sentinel-2 الخالية من السحب (EOX): مجانية دون مفتاح للاستخدام غير التجاري، دقتها الفعلية 10 م للبكسل
            لذلك أقصى تكبير 15 (لا نعرض تفاصيل غير موجودة). img = صورة بلا نصوص، فتُجلب بمستوى أدق يناسب دقة الشاشة */
@@ -17,10 +23,15 @@
         custom: { name: 'مصدر مخصّص (يدعم {r} لبلاطات @2x)', url: '', max: 19, attr: 'مصدر مخصّص', bulk: true },
         none: { name: 'بدون خلفية (شبكة إحداثيات فقط)', url: '', max: 20, attr: '', bulk: false }
     };
-    var cfg = load();
+    var cfg = load(); saveCfg();
     function load() {
-        var d = { src: 'osm', custom: '', lat: null, lng: null, z: 13, up: 'north', follow: true, hd: false };
-        try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); if (o && typeof o === 'object') Object.assign(d, o); } catch (e) { }
+        var d = { src: 'osm', custom: '', lat: null, lng: null, z: 13, up: 'north', follow: true, hd: false, mtkey: '' };
+        var o = null;
+        try { o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o && typeof o === 'object') Object.assign(d, o); else o = null; } catch (e) { o = null; }
+        /* مفتاح MapTiler المدمج بطلب صاحب التطبيق. أول تشغيل بعد التحديث: يُضبط المفتاح وتُختار طبقة القمر الصناعي + الأسماء.
+           يمكن تغييره أو حذفه من زر «الطبقة» (القيمة المحفوظة على الهاتف لها الأولوية). */
+        /* v2: تفتح الخريطة على «تضاريس فائقة الدقة» بأعلى دقة (مرة واحدة بعد التحديث؛ بعدها يُحترم اختيار المستخدم) */
+        if (!o || o.v !== 2) { if (!o || !('mtkey' in o)) d.mtkey = MT_KEY; d.src = 'mttopo'; d.hd = true; d.v = 2; }
         if (!SRC[d.src]) d.src = 'osm';
         return d;
     }
@@ -48,16 +59,20 @@
           وحلقة تحميل مسبق حول الشاشة. */
     var mem = new Map(), memPx = 0, PXMAX = 30e6, inflight = 0, queue = [], cacheP = null, cacheOk = !!window.caches, FR = 0, FADE = 150;
     function cache() { if (!cacheOk) return Promise.reject(new Error('no cache')); return cacheP || (cacheP = caches.open(CACHE)); }
-    function retina(s) { return !!(s.url && s.url.indexOf('{r}') >= 0 && dpr >= 1.5); }
+    function retina(s) { return !!(s.hi || (s.url && s.url.indexOf('{r}') >= 0 && dpr >= 1.5)); }
+    /* مفتاح الحفظ في ذاكرة الهاتف بدون المفتاح السرّي: البلاطات المحفوظة تبقى صالحة لو تغيّر المفتاح، ولا يُخزَّن المفتاح مع كل بلاطة */
+    function ck(u) { return u.replace(/([?&]key=)[^&]*/, '$1_'); }
+    var keyErr = 0;
     function tileURL(s, z, x, y, r2) {
         if (!s.url) return '';
+        if (s.key && !cfg.mtkey) return '';
         var sub = s.sub ? s.sub[(x + y) % s.sub.length] : 'a';
         var r = r2 === undefined ? retina(s) : r2;
-        return s.url.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{s}', sub).replace('{r}', r ? '@2x' : '');
+        return s.url.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{s}', sub).replace('{r}', r ? '@2x' : '').replace('{key}', encodeURIComponent(cfg.mtkey || ''));
     }
     /* مستوى البلاطات المناسب: أقرب مستوى صحيح؛ وصور الأقمار (أو خيار «فائقة») بمستوى أدق بحسب دقة الشاشة */
     function tileZ(s, z) {
-        var boost = (!retina(s) && (s.img || cfg.hd)) ? Math.log2(Math.max(1, dpr)) : 0;
+        var boost = s.hi ? (cfg.hd ? Math.log2(Math.max(1, dpr / 2)) : 0) : (!retina(s) && (s.img || cfg.hd)) ? Math.log2(Math.max(1, dpr)) : 0;
         return Math.max(0, Math.min(s.max, Math.round(z + boost - 0.2)));
     }
     function release(t) { if (t.px) { memPx -= t.px; t.px = 0; } if (t.img && t.img.close) try { t.img.close(); } catch (e) { } t.img = null; }
@@ -113,7 +128,8 @@
             if (k === cfg.src || k === 'none') return;
             var s = k === 'custom' ? Object.assign({}, SRC.custom, { url: cfg.custom || '' }) : SRC[k];
             if (!s.url || t.z > s.max) return;
-            cands.push(tileURL(s, t.z, t.x, t.y, false)); if (s.url.indexOf('{r}') >= 0) cands.push(tileURL(s, t.z, t.x, t.y, true));
+            var a1 = s.key ? s.url.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y).replace('{key}', '_') : tileURL(s, t.z, t.x, t.y, false);
+            cands.push(a1); if (s.url.indexOf('{r}') >= 0) cands.push(tileURL(s, t.z, t.x, t.y, true));
         });
         var i = 0;
         function next() {
@@ -124,14 +140,15 @@
     }
     function fetchTile(u, t) {
         return cache().then(function (c) {
-            return c.match(u).then(function (hit) {
+            return c.match(ck(u)).then(function (hit) {
                 if (hit) return hit.blob().then(toImg).then(function (im) { setImg(t, im); t.cached = true; });
                 var miss = function () { return altFromCache(c, t).then(function (ok) { if (!ok) { t.st = 'miss'; t.at = Date.now(); } }); };
                 if (!navigator.onLine) return miss();
                 return fetch(u, { mode: 'cors', credentials: 'omit' }).then(function (r) {
-                    if (!r.ok) { if (r.status === 404) { t.st = 'none'; return; } t.at = Date.now(); return altFromCache(c, t).then(function (ok) { if (!ok) t.st = 'err'; }); }
+                    if (!r.ok) { if (r.status === 404) { t.st = 'none'; return; } if ((r.status === 401 || r.status === 403 || r.status === 429) && src().key) keyErr = r.status; t.at = Date.now(); return altFromCache(c, t).then(function (ok) { if (!ok) t.st = 'err'; }); }
                     var cp = r.clone();
-                    return c.put(u, cp).catch(function () { }).then(function () { return r.blob(); }).then(toImg).then(function (im) { setImg(t, im); t.cached = true; });
+                    if (src().key) keyErr = 0;
+                    return c.put(ck(u), cp).catch(function () { }).then(function () { return r.blob(); }).then(toImg).then(function (im) { setImg(t, im); t.cached = true; });
                 }, miss);
             });
         }).catch(function () {
@@ -355,6 +372,9 @@
         var s = src(), msg = '';
         if (!s.url) msg = 'بدون خلفية: الشبكة والمسار والوجهات فقط';
         else if (missing) msg = (navigator.onLine ? 'تعذّر تحميل بعض البلاطات' : 'دون اتصال') + ' — المناطق المخطّطة غير منزّلة';
+        else if (src().key && !cfg.mtkey) msg = 'أدخل مفتاح MapTiler من زر «الطبقة» لعرض هذه الطبقة';
+        else if (keyErr === 429) msg = 'انتهى الحد المجاني لهذا الشهر في MapTiler — تُعرض البلاطات المحفوظة فقط';
+        else if (keyErr) msg = 'MapTiler رفض المفتاح — تأكد منه في زر «الطبقة»';
         else if (ts && ts.alt) msg = 'تُعرض بلاطات محفوظة من طبقة أخرى لهذه المنطقة';
         else if (!navigator.onLine) msg = 'دون اتصال — تُعرض البلاطات المحفوظة فقط';
         set('mpMsg', msg);
@@ -417,7 +437,7 @@
     function startDownload() {
         var s = src();
         if (!s.bulk || !s.url) {
-            sheet('تنزيل منطقة', '<p>سياسة <b>' + esc(s.name) + '</b> لا تسمح بالتنزيل الجماعي المسبق للبلاطات، لذلك لا يقوم التطبيق به.</p>'
+            sheet('تنزيل منطقة', '<p>شروط <b>' + esc(s.name) + '</b> لا تسمح بالتنزيل الجماعي المسبق للبلاطات، لذلك لا يقوم التطبيق به.</p>'
                 + '<p>المتاح: كل منطقة تتصفّحها على الخريطة وأنت متصل تُحفظ تلقائيًا وتعمل لاحقًا دون إنترنت. قبل السفر تصفّح مسارك على مستويات التكبير التي تحتاجها.</p>'
                 + '<p>لتنزيل مناطق كاملة: اختر «مصدر مخصّص» من الطبقات وأدخل رابط مزوّد بلاطات تملك حق استخدامه دون اتصال (مثل خادمك الخاص أو اشتراك يسمح بذلك).</p>');
             return;
@@ -433,9 +453,9 @@
                 function next() {
                     if (dl.stop || i >= list.length) { var r = dl; dl = null; paintDl(); toast(r.stop ? 'أُوقف التنزيل' : 'اكتمل التنزيل: ' + (r.done - r.fail) + ' بلاطة' + (r.fail ? ' (فشل ' + r.fail + ')' : '')); return; }
                     var t = list[i++], u = tileURL(s, t[0], ((t[1] % Math.pow(2, t[0])) + Math.pow(2, t[0])) % Math.pow(2, t[0]), t[2]);
-                    c.match(u).then(function (h) {
+                    c.match(ck(u)).then(function (h) {
                         if (h) return;
-                        return fetch(u, { mode: 'cors', credentials: 'omit' }).then(function (r) { if (!r.ok) throw 0; return c.put(u, r); });
+                        return fetch(u, { mode: 'cors', credentials: 'omit' }).then(function (r) { if (!r.ok) throw 0; return c.put(ck(u), r); });
                     }).catch(function () { dl.fail++; }).then(function () { dl.done++; paintDl(); setTimeout(next, 60); });
                 }
                 next(); next();
@@ -459,6 +479,11 @@
             return '<label class="lx-radio"><input type="radio" name="mpsrc" value="' + k + '"' + (cfg.src === k ? ' checked' : '') + '> ' + esc(SRC[k].name) + '</label>';
         }).join('') + '<div id="mpCust"' + (cfg.src === 'custom' ? '' : ' hidden') + '><input id="mpUrl" dir="ltr" placeholder="https://example.com/tiles/{z}/{x}/{y}.png" value="' + esc(cfg.custom || '') + '">'
             + '<p class="hint">يُحفظ الرابط على هاتفك فقط. لا تضع مفاتيح سرّية لا تملكها.</p></div>'
+            + '<div class="lx-sec" id="mpKeyBox" style="margin-top:10px"><b>مفتاح MapTiler</b>'
+            + '<div class="row" style="gap:6px;align-items:center"><input id="mpKey" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="الصق المفتاح هنا" value="' + esc(cfg.mtkey || '') + '" style="flex:1;min-width:0">'
+            + '<button type="button" class="btn btn-ghost" id="mpKeySave" style="flex:0 0 auto">حفظ</button></div>'
+            + '<p class="hint" id="mpKeySt">' + (cfg.mtkey ? 'المفتاح محفوظ على هذا الهاتف فقط.' : 'المفتاح مجاني من cloud.maptiler.com ← API keys. يُحفظ على هذا الهاتف فقط ولا يُرسل إلا إلى MapTiler مع طلب البلاطات.') + '</p>'
+            + '<p class="hint">ما تتصفّحه بهذه الطبقات يُحفظ تلقائيًا ويعمل دون إنترنت. شروط MapTiler تمنع تنزيل مناطق كاملة دفعة واحدة، فتصفّح مسارك قبل السفر.</p></div>'
             + '<div class="lx-sec" style="margin-top:10px"><b>دقة البلاطات</b>'
             + '<label class="lx-radio"><input type="radio" name="mphd" value="0"' + (cfg.hd ? '' : ' checked') + '> عادية — نصوص الشوارع بحجم كبير</label>'
             + '<label class="lx-radio"><input type="radio" name="mphd" value="1"' + (cfg.hd ? ' checked' : '') + '> فائقة — تفاصيل أدق بحسب دقة شاشتك (النصوص أصغر، وتُنزَّل بلاطات أكثر)</label>'
@@ -468,6 +493,15 @@
         b.addEventListener('change', function (e) {
             if (e.target.name === 'mpsrc') { cfg.src = e.target.value; b.querySelector('#mpCust').hidden = cfg.src !== 'custom'; queue.length = 0; saveCfg(); redraw(); }
             if (e.target.name === 'mphd') { cfg.hd = e.target.value === '1'; queue.length = 0; saveCfg(); redraw(); }
+        });
+        b.querySelector('#mpKeySave').addEventListener('click', function () {
+            var v = b.querySelector('#mpKey').value.replace(/\s+/g, '');
+            if (v && !/^[A-Za-z0-9_-]{8,64}$/.test(v)) { toast('المفتاح غير صحيح — انسخه كما هو من موقع MapTiler'); return; }
+            cfg.mtkey = v; keyErr = 0; queue.length = 0;
+            if (v && !SRC[cfg.src].key) { cfg.src = 'mttopo'; var rb = b.querySelector('input[name="mpsrc"][value="mttopo"]'); if (rb) rb.checked = true; b.querySelector('#mpCust').hidden = true; }
+            saveCfg(); redraw();
+            b.querySelector('#mpKeySt').textContent = v ? 'تم الحفظ على هذا الهاتف — الطبقة الآن: تضاريس فائقة الدقة.' : 'حُذف المفتاح من الهاتف.';
+            toast(v ? 'تم حفظ المفتاح' : 'حُذف المفتاح');
         });
         b.querySelector('#mpUrl').addEventListener('change', function () {
             var v = this.value.trim();
