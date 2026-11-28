@@ -1837,7 +1837,8 @@
                 fmtD: fmtD, dirLbl: dirLbl, copyCoords: function (d) { copyCoords(d); }, tab: function () { return S.tab; }, alive: function () { return alive(); },
                 resetCal: function () { S.off = 0; S.offN = 0; S.offLoaded = true; const D = db(); if (D.opts) delete D.opts.off; persist(); toast('تمت إعادة ضبط معايرة البوصلة — ستُعاير من جديد بعد دقيقة حركة'); },
                 stopNav: function () { db().sel = null; persist(); S.arrived = false; paintBody(); },
-                save: function (kind) { doSave(kind || 'home'); }, repaint: function () { paintBody(); } };
+                save: function (kind) { doSave(kind || 'home'); }, repaint: function () { paintBody(); },
+                parseLL: parseLL, fmtCoord: fmtCoord };
             window.GBS_API = API;
             function go(tab) { S.tab = tab; paintBody(); try { window.dispatchEvent(new CustomEvent('gbs:tab', { detail: tab })); } catch (e) { } }
             function tick() {
