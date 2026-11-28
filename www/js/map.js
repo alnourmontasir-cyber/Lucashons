@@ -10,13 +10,16 @@
     var KEY = 'gbs.map', CACHE = 'gbs-tiles-v1';
     var SRC = {
         osm: { name: 'طرق — OpenStreetMap', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19, attr: '© مساهمو OpenStreetMap', bulk: false },
+        /* صور أقمار Sentinel-2 الخالية من السحب (EOX): مجانية دون مفتاح للاستخدام غير التجاري، دقتها الفعلية 10 م للبكسل
+           لذلك أقصى تكبير 15 (لا نعرض تفاصيل غير موجودة). img = صورة بلا نصوص، فتُجلب بمستوى أدق يناسب دقة الشاشة */
+        sat: { name: 'قمر صناعي — Sentinel-2 (دقة 10 م)', url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg', max: 15, img: true, attr: 'EOxCloudless 2024 by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2024) · CC BY-NC-SA 4.0', bulk: false },
         topo: { name: 'تضاريس — OpenTopoMap', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', sub: 'abc', max: 17, attr: '© OpenStreetMap · SRTM · OpenTopoMap (CC-BY-SA)', bulk: false },
-        custom: { name: 'مصدر مخصّص', url: '', max: 19, attr: 'مصدر مخصّص', bulk: true },
+        custom: { name: 'مصدر مخصّص (يدعم {r} لبلاطات @2x)', url: '', max: 19, attr: 'مصدر مخصّص', bulk: true },
         none: { name: 'بدون خلفية (شبكة إحداثيات فقط)', url: '', max: 20, attr: '', bulk: false }
     };
     var cfg = load();
     function load() {
-        var d = { src: 'osm', custom: '', lat: null, lng: null, z: 13, up: 'north', follow: true };
+        var d = { src: 'osm', custom: '', lat: null, lng: null, z: 13, up: 'north', follow: true, hd: false };
         try { var o = JSON.parse(localStorage.getItem(KEY) || '{}'); if (o && typeof o === 'object') Object.assign(d, o); } catch (e) { }
         if (!SRC[d.src]) d.src = 'osm';
         return d;
@@ -34,55 +37,109 @@
     function latOf(y, z) { var n = Math.PI - 2 * Math.PI * y / (TS * Math.pow(2, z)); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
     function mpp(lat, z) { return 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, z); }
 
-    /* ---------- البلاطات: ذاكرة + Cache API ---------- */
-    var mem = new Map(), MEMMAX = 220, inflight = 0, queue = [], cacheP = null, cacheOk = !!window.caches;
+    /* ---------- البلاطات: ذاكرة + Cache API ----------
+       [الوضوح] أسباب التشويش السابقة وإصلاحها:
+       1) التكبير الكسري (مثل 13.9) كان يرسم بلاطات المستوى 13 مكبّرة حتى ضعفين ← الآن يُختار أقرب مستوى بلاطات
+          ويُثبَّت التكبير على رقم صحيح بعد كل إيماءة، فتُعرض البلاطة بحجمها الحقيقي.
+       2) الرسم بإحداثيات كسرية كان يمرّر البلاطة بفلترة إضافية ← الآن تُرسم على حدود بكسلات الشاشة الفعلية (devicePixelRatio) بلا فواصل.
+       3) شاشة الهاتف 2.5–3 أضعاف ← صور الأقمار (بلا نصوص) تُجلب بمستوى أدق بحسب دقة الشاشة، وخيار «فائقة» لبقية الطبقات،
+          والمصدر المخصّص يدعم {r} → @2x.
+       4) مربعات فارغة عند التحريك/التكبير ← بديل مؤقت من البلاطة الأم أو البلاطات الأبناء، ظهور تدريجي، تحميل الأقرب للمركز أولًا،
+          وحلقة تحميل مسبق حول الشاشة. */
+    var mem = new Map(), memPx = 0, PXMAX = 30e6, inflight = 0, queue = [], cacheP = null, cacheOk = !!window.caches, FR = 0, FADE = 150;
     function cache() { if (!cacheOk) return Promise.reject(new Error('no cache')); return cacheP || (cacheP = caches.open(CACHE)); }
-    function tileURL(s, z, x, y) {
+    function retina(s) { return !!(s.url && s.url.indexOf('{r}') >= 0 && dpr >= 1.5); }
+    function tileURL(s, z, x, y, r2) {
         if (!s.url) return '';
         var sub = s.sub ? s.sub[(x + y) % s.sub.length] : 'a';
-        return s.url.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{s}', sub).replace('{r}', '');
+        var r = r2 === undefined ? retina(s) : r2;
+        return s.url.replace('{z}', z).replace('{x}', x).replace('{y}', y).replace('{s}', sub).replace('{r}', r ? '@2x' : '');
     }
-    function memPut(k, v) { mem.delete(k); mem.set(k, v); while (mem.size > MEMMAX) { var f = mem.keys().next().value, o = mem.get(f); if (o && o.img && o.img.close) try { o.img.close(); } catch (e) { } mem.delete(f); } }
+    /* مستوى البلاطات المناسب: أقرب مستوى صحيح؛ وصور الأقمار (أو خيار «فائقة») بمستوى أدق بحسب دقة الشاشة */
+    function tileZ(s, z) {
+        var boost = (!retina(s) && (s.img || cfg.hd)) ? Math.log2(Math.max(1, dpr)) : 0;
+        return Math.max(0, Math.min(s.max, Math.round(z + boost - 0.2)));
+    }
+    function release(t) { if (t.px) { memPx -= t.px; t.px = 0; } if (t.img && t.img.close) try { t.img.close(); } catch (e) { } t.img = null; }
+    function evict() {
+        if (memPx <= PXMAX && mem.size <= 700) return;
+        var it = mem.keys(), k;
+        while ((memPx > PXMAX || mem.size > 700) && !(k = it.next()).done) {
+            var t = mem.get(k.value);
+            if (t.seen >= FR - 1 || t.st === 'load') continue; /* لا نحذف ما يُرسم الآن */
+            release(t); mem.delete(k.value);
+        }
+    }
+    function setImg(t, im) { t.img = im; t.st = 'ok'; t.lt = performance.now(); t.px = (im.width || 256) * (im.height || 256); memPx += t.px; evict(); }
     function toImg(blob) {
         if (window.createImageBitmap) return createImageBitmap(blob);
         return new Promise(function (res, rej) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = URL.createObjectURL(blob); });
     }
-    function getTile(z, x, y) {
-        var s = src(), u = tileURL(s, z, x, y);
+    function peek(s, z, x, y) { var u = tileURL(s, z, x, y); return u ? mem.get(u) : null; }
+    function getTile(s, z, x, y, pri, base) {
+        var u = tileURL(s, z, x, y);
         if (!u) return null;
-        var k = cfg.src + '/' + z + '/' + x + '/' + y, t = mem.get(k);
-        if (t) { if (t.st === 'miss' && navigator.onLine && Date.now() - t.at > 15000) { mem.delete(k); } else return t; }
-        t = { st: 'load', at: Date.now() };
-        memPut(k, t);
-        queue.push(function () { return fetchTile(u, t); });
+        var now = performance.now(), t = mem.get(u);
+        if (t) {
+            mem.delete(u); mem.set(u, t); /* الأحدث استعمالًا في آخر القائمة */
+            if ((t.st === 'miss' || t.st === 'err') && navigator.onLine && Date.now() - t.at > 15000) { t.st = 'load'; queue.push({ u: u, t: t }); }
+            t.seen = FR; t.pri = pri; t.want = now;
+            if (t.st === 'load') pump();
+            return t;
+        }
+        t = { st: 'load', at: Date.now(), seen: FR, pri: pri, want: now, z: z, x: x, y: y, base: !!base };
+        mem.set(u, t);
+        queue.push({ u: u, t: t });
         pump();
         return t;
     }
     function pump() {
+        var now = performance.now();
+        /* إسقاط ما لم يعد ظاهرًا (حرّكت الخريطة بعيدًا) حتى لا يتأخر ما تراه الآن */
+        for (var i = queue.length - 1; i >= 0; i--) if (now - queue[i].t.want > 2500) { var q = queue[i]; queue.splice(i, 1); if (q.t.st === 'load') mem.delete(q.u); }
         while (inflight < 6 && queue.length) {
-            var job = queue.pop(); /* الأحدث أولًا: ما يراه المستخدم الآن */
+            var bi = 0;
+            for (var j = 1; j < queue.length; j++) if (queue[j].t.pri < queue[bi].t.pri) bi = j; /* الأقرب لمركز الشاشة أولًا */
+            var job = queue.splice(bi, 1)[0];
             inflight++;
-            job().catch(function () { }).then(function () { inflight--; redraw(); pump(); });
+            fetchTile(job.u, job.t).catch(function () { }).then(function () { inflight--; redraw(); pump(); });
         }
-        if (queue.length > 200) queue.splice(0, queue.length - 200);
+    }
+    /* بديل دون اتصال: نفس البلاطة من طبقة أخرى محفوظة سابقًا (مثلًا مناطق تصفحتها على OpenStreetMap قبل تغيير الطبقة) */
+    function altFromCache(c, t) {
+        if (!t.base) return Promise.resolve(false);
+        var cands = [];
+        Object.keys(SRC).forEach(function (k) {
+            if (k === cfg.src || k === 'none') return;
+            var s = k === 'custom' ? Object.assign({}, SRC.custom, { url: cfg.custom || '' }) : SRC[k];
+            if (!s.url || t.z > s.max) return;
+            cands.push(tileURL(s, t.z, t.x, t.y, false)); if (s.url.indexOf('{r}') >= 0) cands.push(tileURL(s, t.z, t.x, t.y, true));
+        });
+        var i = 0;
+        function next() {
+            if (i >= cands.length) return Promise.resolve(false);
+            return c.match(cands[i++]).then(function (h) { return h ? h.blob().then(toImg).then(function (im) { setImg(t, im); t.alt = true; return true; }) : next(); });
+        }
+        return next().catch(function () { return false; });
     }
     function fetchTile(u, t) {
         return cache().then(function (c) {
             return c.match(u).then(function (hit) {
-                if (hit) return hit.blob().then(toImg).then(function (im) { t.img = im; t.st = 'ok'; t.cached = true; });
-                if (!navigator.onLine) { t.st = 'miss'; return; }
+                if (hit) return hit.blob().then(toImg).then(function (im) { setImg(t, im); t.cached = true; });
+                var miss = function () { return altFromCache(c, t).then(function (ok) { if (!ok) { t.st = 'miss'; t.at = Date.now(); } }); };
+                if (!navigator.onLine) return miss();
                 return fetch(u, { mode: 'cors', credentials: 'omit' }).then(function (r) {
-                    if (!r.ok) { t.st = r.status === 404 ? 'none' : 'err'; return; }
+                    if (!r.ok) { if (r.status === 404) { t.st = 'none'; return; } t.at = Date.now(); return altFromCache(c, t).then(function (ok) { if (!ok) t.st = 'err'; }); }
                     var cp = r.clone();
-                    return c.put(u, cp).catch(function () { }).then(function () { return r.blob(); }).then(toImg).then(function (im) { t.img = im; t.st = 'ok'; t.cached = true; });
-                }).catch(function () { t.st = 'miss'; t.at = Date.now(); });
+                    return c.put(u, cp).catch(function () { }).then(function () { return r.blob(); }).then(toImg).then(function (im) { setImg(t, im); t.cached = true; });
+                }, miss);
             });
         }).catch(function () {
             /* بدون Cache API (أو CORS مرفوض): عرض مباشر دون حفظ */
             return new Promise(function (res) {
-                if (!navigator.onLine) { t.st = 'miss'; return res(); }
+                if (!navigator.onLine) { t.st = 'miss'; t.at = Date.now(); return res(); }
                 var i = new Image(); i.crossOrigin = 'anonymous';
-                i.onload = function () { t.img = i; t.st = 'ok'; t.cached = false; res(); };
+                i.onload = function () { setImg(t, i); t.cached = false; res(); };
                 i.onerror = function () { t.st = 'miss'; t.at = Date.now(); res(); };
                 i.src = u;
             });
@@ -101,7 +158,7 @@
     function resize() {
         if (!cv) return;
         var r = cv.parentNode.getBoundingClientRect();
-        dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        dpr = Math.min(window.devicePixelRatio || 1, 4); /* الدقة الكاملة لشاشة الهاتف (كان الحد 2.5 فيُمدّ الرسم مرة أخرى على شاشات 3x) */
         W = Math.max(1, r.width); H = Math.max(1, r.height);
         cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
         cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -124,36 +181,97 @@
         hatch = ctx.createPattern(c, 'repeat');
         return hatch;
     }
-    function drawMap() {
-        if (!ctx || !cv.isConnected) return;
-        var c = center(), z = cfg.z, zi = Math.floor(z), sc = Math.pow(2, z - zi), r = rot();
-        var cx = wx(c.lng, zi), cy = wy(c.lat, zi);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.fillStyle = '#070a12'; ctx.fillRect(0, 0, W, H);
-        ctx.save();
-        ctx.translate(W / 2, H / 2); ctx.rotate(-r); ctx.scale(sc, sc);
-        var s = src(), rad = Math.sqrt(W * W + H * H) / 2 / sc, n = Math.pow(2, zi);
-        var x0 = Math.floor((cx - rad) / TS), x1 = Math.floor((cx + rad) / TS), y0 = Math.max(0, Math.floor((cy - rad) / TS)), y1 = Math.min(n - 1, Math.floor((cy + rad) / TS));
-        var missing = 0, shown = 0;
+    /* رسم بلاطة (أو جزء منها) في مستطيل بإحداثيات عالم مستوى البلاطات نسبةً للمركز.
+       دون تدوير: تُحوَّل الحواف إلى بكسلات الشاشة الحقيقية وتُقرَّب ← بلا فواصل ولا فلترة نصف بكسل. */
+    var G = null;
+    function put(img, sx, sy, sw, sh, dx, dy, dw, dh) {
+        if (!G.r) {
+            var a = Math.round((W / 2 + dx * G.sc) * dpr), b = Math.round((H / 2 + dy * G.sc) * dpr),
+                e = Math.round((W / 2 + (dx + dw) * G.sc) * dpr), f = Math.round((H / 2 + (dy + dh) * G.sc) * dpr);
+            if (e > a && f > b) ctx.drawImage(img, sx, sy, sw, sh, a, b, e - a, f - b);
+        } else ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw + 0.7 / G.sc, dh + 0.7 / G.sc);
+    }
+    function whole(t, dx, dy, dw, dh) { put(t.img, 0, 0, t.img.width, t.img.height, dx, dy, dw, dh); }
+    function setLayerTransform() {
+        if (!G.r) ctx.setTransform(1, 0, 0, 1, 0, 0);
+        else { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.translate(W / 2, H / 2); ctx.rotate(-G.r); ctx.scale(G.sc, G.sc); }
+        ctx.imageSmoothingEnabled = true; try { ctx.imageSmoothingQuality = 'high'; } catch (e) { }
+    }
+    /* بديل مؤقت حتى تصل البلاطة: الأم المكبّرة ثم ما توفر من الأبناء (عند التصغير) */
+    function fallback(s, zt, X, ty, dx, dy, t) {
+        var drew = false, prevNone = t && t.st === 'none';
+        for (var up = 1; up <= 6 && zt - up >= 0; up++) {
+            var f = Math.pow(2, up), px = Math.floor(X / f), py = Math.floor(ty / f), pt = peek(s, zt - up, px, py);
+            if (!pt && prevNone) pt = getTile(s, zt - up, px, py, 0, true); /* المصدر لا يملك هذا المستوى هنا: نطلب الأم صراحة */
+            if (pt && pt.st === 'ok') {
+                var iw = pt.img.width / f, ih = pt.img.height / f;
+                pt.seen = FR; put(pt.img, (X % f) * iw, (ty % f) * ih, iw, ih, dx, dy, TS, TS); drew = true; break;
+            }
+            prevNone = pt && pt.st === 'none';
+        }
+        if (zt + 1 <= s.max) for (var j = 0; j < 4; j++) {
+            var ct = peek(s, zt + 1, X * 2 + (j & 1), ty * 2 + (j >> 1));
+            if (ct && ct.st === 'ok') { ct.seen = FR; whole(ct, dx + (j & 1) * TS / 2, dy + (j >> 1) * TS / 2, TS / 2, TS / 2); drew = true; }
+        }
+        return drew;
+    }
+    function drawTiles(s, c, r, now) {
+        var zt = tileZ(s, cfg.z), sc = Math.pow(2, cfg.z - zt), n = Math.pow(2, zt);
+        var cx = wx(c.lng, zt), cy = wy(c.lat, zt);
+        G = { r: r, sc: sc };
+        setLayerTransform();
+        var hw = (r ? Math.sqrt(W * W + H * H) / 2 : W / 2) / sc, hh = (r ? Math.sqrt(W * W + H * H) / 2 : H / 2) / sc;
+        var x0 = Math.floor((cx - hw) / TS), x1 = Math.floor((cx + hw) / TS), y0 = Math.max(0, Math.floor((cy - hh) / TS)), y1 = Math.min(n - 1, Math.floor((cy + hh) / TS));
+        var st = { missing: 0, shown: 0, alt: 0, fading: false, zt: zt };
+        var ccx = cx / TS - 0.5, ccy = cy / TS - 0.5;
         for (var ty = y0; ty <= y1; ty++) for (var tx = x0; tx <= x1; tx++) {
-            var X = ((tx % n) + n) % n, px = tx * TS - cx, py = ty * TS - cy;
-            var t = s.url ? getTile(zi, X, ty) : null;
-            if (t && t.st === 'ok') { ctx.drawImage(t.img, px, py, TS + 0.5, TS + 0.5); shown++; continue; }
-            /* بديل مؤقت: البلاطة الأم مكبّرة إن كانت في الذاكرة */
-            var drawn = false;
-            for (var up = 1; up <= 4 && zi - up >= 0 && s.url; up++) {
-                var f = Math.pow(2, up), pt = mem.get(cfg.src + '/' + (zi - up) + '/' + Math.floor(X / f) + '/' + Math.floor(ty / f));
-                if (pt && pt.st === 'ok') {
-                    var sx = (X % f) * TS / f, sy = (ty % f) * TS / f;
-                    ctx.drawImage(pt.img, sx, sy, TS / f, TS / f, px, py, TS + 0.5, TS + 0.5); drawn = true; break;
+            var X = ((tx % n) + n) % n, dx = tx * TS - cx, dy = ty * TS - cy;
+            var t = getTile(s, zt, X, ty, Math.hypot(tx - ccx, ty - ccy), true);
+            var ok = t && t.st === 'ok', a = ok ? Math.min(1, (now - t.lt) / FADE) : 0;
+            if (a < 1) {
+                var drew = fallback(s, zt, X, ty, dx, dy, t);
+                if (!drew && !ok) {
+                    var bad = t && (t.st === 'miss' || t.st === 'err');
+                    ctx.fillStyle = bad ? hatchPat() : '#0d1424';
+                    if (!r) { ctx.save(); ctx.setTransform(dpr * sc, 0, 0, dpr * sc, (W / 2) * dpr, (H / 2) * dpr); ctx.fillRect(dx, dy, TS, TS); ctx.restore(); }
+                    else ctx.fillRect(dx, dy, TS, TS);
+                    if (bad) st.missing++;
                 }
             }
-            if (!drawn) {
-                ctx.fillStyle = (t && (t.st === 'miss' || t.st === 'err')) || !s.url ? hatchPat() : '#0d1424';
-                ctx.fillRect(px, py, TS, TS);
-                if (t && (t.st === 'miss' || t.st === 'err')) missing++;
+            if (ok) {
+                if (a < 1) { ctx.globalAlpha = a; st.fading = true; }
+                whole(t, dx, dy, TS, TS); ctx.globalAlpha = 1; st.shown++;
+                if (t.alt) st.alt++;
             }
         }
+        /* حلقة تحميل مسبق ببلاطة واحدة حول الشاشة (أولوية أقل) حتى يكون التحريك سلسًا */
+        if (queue.length < 6) for (var ry = y0 - 1; ry <= y1 + 1; ry++) for (var rx = x0 - 1; rx <= x1 + 1; rx++) {
+            if (ry < 0 || ry >= n || (ry >= y0 && ry <= y1 && rx >= x0 && rx <= x1)) continue;
+            getTile(s, zt, ((rx % n) + n) % n, ry, 50 + Math.hypot(rx - ccx, ry - ccy), true);
+        }
+        return st;
+    }
+    function drawMap() {
+        if (!ctx || !cv.isConnected) return;
+        FR++;
+        var now = performance.now(), again = false;
+        if (zAnim) {
+            var p = Math.min(1, (now - zAnim.t0) / 200), e = 1 - Math.pow(1 - p, 3);
+            cfg.z = zAnim.from + (zAnim.to - zAnim.from) * e;
+            if (p < 1) again = true; else { cfg.z = zAnim.to; zAnim = null; saveCfg(); }
+        }
+        var s = src();
+        if (cfg.z > (s.max || 19)) cfg.z = s.max || 19;
+        var c = center(), z = cfg.z, zi = Math.floor(z), sc = Math.pow(2, z - zi), r = rot();
+        var cx = wx(c.lng, zi), cy = wy(c.lat, zi);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#070a12'; ctx.fillRect(0, 0, cv.width, cv.height);
+        var ts = s.url ? drawTiles(s, c, r, now) : { missing: 0, shown: 0, alt: 0, fading: false, zt: zi };
+        if (ts.fading) again = true;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.save();
+        ctx.translate(W / 2, H / 2); ctx.rotate(-r); ctx.scale(sc, sc);
+        var rad = Math.sqrt(W * W + H * H) / 2 / sc, missing = ts.missing, shown = ts.shown;
         if (!s.url) drawGrid(cx, cy, zi, rad);
         var P = function (la, lo) { return [wx(lo, zi) - cx, wy(la, zi) - cy]; };
         var k = 1 / sc;
@@ -188,7 +306,8 @@
             ctx.fillStyle = L.stale ? '#98a3bb' : '#1e9bff'; ctx.beginPath(); ctx.arc(0, 0, 6.5, 0, 7); ctx.fill(); ctx.restore();
         }
         ctx.restore();
-        hud(c, zi, missing, shown, L);
+        hud(c, zi, missing, shown, L, ts);
+        if (again) redraw();
     }
     function line(pts, P, color, w) {
         ctx.save(); ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = w + 3 * w / 4.5; ctx.lineJoin = ctx.lineCap = 'round';
@@ -224,9 +343,11 @@
         for (var la = Math.ceil(la0 / st) * st; la <= la1; la += st) { var y = wy(la, zi) - cy; ctx.moveTo(-rad, y); ctx.lineTo(rad, y); }
         ctx.stroke();
     }
-    function hud(c, zi, missing, shown, L) {
+    function hud(c, zi, missing, shown, L, ts) {
         var set = function (id, v) { var el = host && host.querySelector('#' + id); if (el && el.textContent !== v) el.textContent = v; };
-        set('mpZ', 'تكبير ' + cfg.z.toFixed(cfg.z % 1 ? 1 : 0));
+        var zr = Math.round(cfg.z * 10) / 10;
+        set('mpZ', 'تكبير ' + zr.toFixed(zr % 1 ? 1 : 0) + (ts && src().url && ts.zt !== Math.round(cfg.z) ? ' · بلاطات ' + ts.zt + (ts.zt > Math.round(cfg.z) ? ' (أدق)' : ' (أقصى المتاح)') : ''));
+        set('mpAttr', src().attr ? src().attr + ' · ' : '');
         set('mpC', c.lat.toFixed(5) + ', ' + c.lng.toFixed(5));
         var m = mpp(c.lat, cfg.z), lens = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000], tgt = m * 90;
         var sl = lens.find(function (x) { return x >= tgt; }) || 500000, bar = host && host.querySelector('#mpScale');
@@ -234,6 +355,7 @@
         var s = src(), msg = '';
         if (!s.url) msg = 'بدون خلفية: الشبكة والمسار والوجهات فقط';
         else if (missing) msg = (navigator.onLine ? 'تعذّر تحميل بعض البلاطات' : 'دون اتصال') + ' — المناطق المخطّطة غير منزّلة';
+        else if (ts && ts.alt) msg = 'تُعرض بلاطات محفوظة من طبقة أخرى لهذه المنطقة';
         else if (!navigator.onLine) msg = 'دون اتصال — تُعرض البلاطات المحفوظة فقط';
         set('mpMsg', msg);
         var mm = host && host.querySelector('#mpMsg'); if (mm) mm.hidden = !msg;
@@ -258,12 +380,16 @@
         if (cfg.follow) { cfg.follow = false; }
         redraw();
     }
-    function zoomTo(z) { cfg.z = Math.max(2, Math.min(src().max || 19, Math.round(z * 10) / 10)); saveCfg(); redraw(); }
+    function clampZ(z) { return Math.max(2, Math.min(src().max || 19, z)); }
+    var zAnim = null;
+    /* أثناء القرص بإصبعين: تكبير حر. بعد انتهاء الإيماءة وبالأزرار: انتقال سلس إلى رقم صحيح حتى تُعرض البلاطات بحجمها الحقيقي (أوضح صورة) */
+    function zoomTo(z) { zAnim = null; cfg.z = clampZ(z); redraw(); }
+    function animZoom(to) { to = clampZ(Math.round(to)); if (Math.abs(to - cfg.z) < 0.01) { cfg.z = to; zAnim = null; saveCfg(); redraw(); return; } zAnim = { from: cfg.z, to: to, t0: performance.now() }; redraw(); }
     function bindCanvas() {
         cv.addEventListener('pointerdown', function (e) {
-            cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            try { cv.setPointerCapture(e.pointerId); } catch (er) { } ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (ptrs.size === 2) { var a = Array.from(ptrs.values()); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), z: cfg.z }; }
-            if (ptrs.size === 1) { var t = Date.now(); if (t - lastTap < 300) zoomTo(cfg.z + 1); lastTap = t; }
+            if (ptrs.size === 1) { var t = Date.now(); if (t - lastTap < 300) animZoom(Math.round(cfg.z) + 1); lastTap = t; }
         });
         cv.addEventListener('pointermove', function (e) {
             var p = ptrs.get(e.pointerId); if (!p) return;
@@ -271,9 +397,9 @@
             p.x = e.clientX; p.y = e.clientY;
             if (ptrs.size === 2 && pinch) { var a = Array.from(ptrs.values()), d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); if (pinch.d > 10) zoomTo(pinch.z + Math.log2(d / pinch.d)); }
         });
-        var up = function (e) { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; saveCfg(); };
+        var up = function (e) { ptrs.delete(e.pointerId); if (ptrs.size < 2 && pinch) { pinch = null; animZoom(cfg.z); } saveCfg(); };
         cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-        cv.addEventListener('wheel', function (e) { e.preventDefault(); zoomTo(cfg.z - Math.sign(e.deltaY) * 0.5); }, { passive: false });
+        cv.addEventListener('wheel', function (e) { e.preventDefault(); animZoom(Math.round(cfg.z) - Math.sign(e.deltaY)); }, { passive: false });
     }
 
     /* ---------- التنزيل المسبق (للمصدر المخصّص فقط) ---------- */
@@ -333,18 +459,23 @@
             return '<label class="lx-radio"><input type="radio" name="mpsrc" value="' + k + '"' + (cfg.src === k ? ' checked' : '') + '> ' + esc(SRC[k].name) + '</label>';
         }).join('') + '<div id="mpCust"' + (cfg.src === 'custom' ? '' : ' hidden') + '><input id="mpUrl" dir="ltr" placeholder="https://example.com/tiles/{z}/{x}/{y}.png" value="' + esc(cfg.custom || '') + '">'
             + '<p class="hint">يُحفظ الرابط على هاتفك فقط. لا تضع مفاتيح سرّية لا تملكها.</p></div>'
+            + '<div class="lx-sec" style="margin-top:10px"><b>دقة البلاطات</b>'
+            + '<label class="lx-radio"><input type="radio" name="mphd" value="0"' + (cfg.hd ? '' : ' checked') + '> عادية — نصوص الشوارع بحجم كبير</label>'
+            + '<label class="lx-radio"><input type="radio" name="mphd" value="1"' + (cfg.hd ? ' checked' : '') + '> فائقة — تفاصيل أدق بحسب دقة شاشتك (النصوص أصغر، وتُنزَّل بلاطات أكثر)</label>'
+            + '<p class="hint">صور القمر الصناعي تُعرض دائمًا بالدقة الأعلى المناسبة لشاشتك.</p></div>'
             + '<p class="hint">ملاحظة: بيانات الطرق والتضاريس في كثير من مناطق السودان والصحراء ناقصة أو غير موجودة. غياب طريق على الخريطة لا يعني عدم وجوده، ووجوده لا يعني أنه صالح.</p>'
             + '<div class="row"><button type="button" class="btn btn-ghost" id="mpClear">مسح البلاطات المحفوظة</button></div><p class="hint" id="mpCnt"></p>');
         b.addEventListener('change', function (e) {
-            if (e.target.name === 'mpsrc') { cfg.src = e.target.value; b.querySelector('#mpCust').hidden = cfg.src !== 'custom'; mem.clear(); saveCfg(); redraw(); }
+            if (e.target.name === 'mpsrc') { cfg.src = e.target.value; b.querySelector('#mpCust').hidden = cfg.src !== 'custom'; queue.length = 0; saveCfg(); redraw(); }
+            if (e.target.name === 'mphd') { cfg.hd = e.target.value === '1'; queue.length = 0; saveCfg(); redraw(); }
         });
         b.querySelector('#mpUrl').addEventListener('change', function () {
             var v = this.value.trim();
             if (v && !/^https:\/\/.+\{z\}.+\{x\}.+\{y\}/.test(v)) { toast('الرابط يجب أن يبدأ بـ https ويحتوي {z} و {x} و {y}'); return; }
-            cfg.custom = v; mem.clear(); saveCfg(); redraw();
+            cfg.custom = v; queue.length = 0; saveCfg(); redraw();
         });
         b.querySelector('#mpClear').addEventListener('click', function () {
-            showConfirm('مسح البلاطات', 'حذف كل بلاطات الخريطة المحفوظة على الهاتف؟', function () { if (window.caches) caches.delete(CACHE).then(function () { cacheP = null; mem.clear(); count(); redraw(); toast('تم المسح'); }); });
+            showConfirm('مسح البلاطات', 'حذف كل بلاطات الخريطة المحفوظة على الهاتف؟', function () { if (window.caches) caches.delete(CACHE).then(function () { cacheP = null; mem.forEach(release); mem.clear(); memPx = 0; count(); redraw(); toast('تم المسح'); }); });
         });
         count();
         function count() { tileCount().then(function (n) { var el = b.querySelector('#mpCnt'); if (el) el.textContent = n == null ? '' : 'البلاطات المحفوظة على الهاتف: ' + n; }); }
@@ -363,7 +494,7 @@
         t.pts.forEach(function (p) { la0 = Math.min(la0, p[0]); la1 = Math.max(la1, p[0]); lo0 = Math.min(lo0, p[1]); lo1 = Math.max(lo1, p[1]); });
         cfg.lat = (la0 + la1) / 2; cfg.lng = (lo0 + lo1) / 2; cfg.follow = false;
         var z = 18; while (z > 3 && ((wx(lo1, z) - wx(lo0, z)) > W * 0.8 || (wy(la0, z) - wy(la1, z)) > H * 0.8)) z--;
-        cfg.z = Math.min(z, src().max || 19);
+        cfg.z = Math.min(z, src().max || 19); zAnim = null;
         saveCfg(); redraw();
     }
 
@@ -386,15 +517,15 @@
                 + '<button type="button" data-m="layers">🗺 الطبقة</button><button type="button" data-m="save">📍 حفظ المركز كوجهة</button>'
                 + '<button type="button" data-m="dl">⬇️ تنزيل المنطقة</button><button type="button" data-m="trip">〰 المسار</button>'
                 + '</div>'
-                + '<p class="lx-attr">' + esc(src().attr) + ' · الخط الأصفر المتقطع = اتجاه مباشر وليس طريقًا. الخريطة للمساعدة فقط؛ البوصلة والسهم يعملان دونها.</p>';
+                + '<p class="lx-attr"><span id="mpAttr"></span>الخط الأصفر المتقطع = اتجاه مباشر وليس طريقًا. الخريطة للمساعدة فقط؛ البوصلة والسهم يعملان دونها.</p>';
             body.appendChild(host);
             cv = host.querySelector('canvas'); ctx = cv.getContext('2d');
             bindCanvas();
             host.addEventListener('click', function (e) {
                 var b = e.target.closest('[data-m]'); if (!b) return;
                 switch (b.getAttribute('data-m')) {
-                    case 'zin': zoomTo(cfg.z + 1); break;
-                    case 'zout': zoomTo(cfg.z - 1); break;
+                    case 'zin': animZoom(Math.round(cfg.z) + 1); break;
+                    case 'zout': animZoom(Math.round(cfg.z) - 1); break;
                     case 'follow': cfg.follow = !cfg.follow; if (cfg.follow && cfg.z < 12) cfg.z = 15; saveCfg(); redraw(); break;
                     case 'up': cfg.up = cfg.up === 'head' ? 'north' : 'head'; saveCfg(); redraw(); break;
                     case 'layers': layers(); break;

@@ -106,15 +106,37 @@
         var k2 = cellOf(body, 'gpsSpd'), k3 = cellOf(body, 'gpsAcc');
         if (k2) mid.querySelector('#xK2').appendChild(k2);
         if (k3) mid.querySelector('#xK3').appendChild(k3);
-        /* شريط المعلومات أسفل الدائرة داخل اللوحة */
+        /* أسفل الدائرة: الإحداثيات والارتفاع في مساحة مستقلة، ثم زرّا الحفظ والمشاركة، ثم سطر الحالة */
+        var geo = document.createElement('div');
+        geo.className = 'lx-geo';
+        geo.innerHTML = '<div class="lx-gc"><small>خط العرض</small><b id="xLatS"></b></div>'
+            + '<div class="lx-gc"><small>خط الطول</small><b id="xLngS"></b></div>'
+            + '<div class="lx-gc lx-galt"><small>الارتفاع</small><b id="xAltS"></b></div>';
+        panel.appendChild(geo);
+        /* نقل العناصر نفسها (بنفس المعرّفات) فيستمر تحديثها كما كان */
+        [['gpsLat', 'xLatS'], ['gpsLng', 'xLngS'], ['gpsAlt', 'xAltS']].forEach(function (p) { var e = body.querySelector('#' + p[0]), t = geo.querySelector('#' + p[1]); if (e && t) t.appendChild(e); });
+        var act = document.createElement('div');
+        act.className = 'lx-act';
+        panel.appendChild(act);
+        var hs = body.querySelector('#gpsHomeSave'), sh = body.querySelector('#gpsShare'), hb = body.querySelector('#gpsHomeBox');
+        if (hs) { hs.removeAttribute('style'); act.appendChild(hs); }
+        if (sh) act.appendChild(sh);
+        if (hb) panel.appendChild(hb);
         var strip = document.createElement('div');
         strip.className = 'lx-strip';
-        strip.innerHTML = '<div class="lx-sgrid" id="xSG"></div>'
-            + '<div class="lx-sline"><span class="lx-conf" id="xConf"><i></i><b></b></span><span id="xAge">—</span><span class="lx-sat" title="أندرويد والمتصفح لا يتيحان عدد الأقمار لتطبيقات الويب">الأقمار: غير متاح</span><span class="lx-cmp" id="xCmp"></span></div>'
+        strip.innerHTML = '<div class="lx-sline"><span class="lx-conf" id="xConf"><i></i><b></b></span><span class="lx-sigp" id="xSigP"><small>الإشارة</small></span><span id="xAge">—</span><span class="lx-sat" title="أندرويد والمتصفح لا يتيحان عدد الأقمار لتطبيقات الويب">الأقمار: غير متاح</span><span class="lx-cmp" id="xCmp"></span></div>'
             + '<p class="lx-confr" id="xConfR"></p>';
         panel.appendChild(strip);
-        var sg = strip.querySelector('#xSG');
-        ['gpsLat', 'gpsAlt', 'gpsSig'].forEach(function (id) { var c = cellOf(body, id); if (c) sg.appendChild(c); });
+        var sig = body.querySelector('#gpsSig'); if (sig) strip.querySelector('#xSigP').appendChild(sig);
+        /* بقية الأزرار السفلية في صف واحد منظم */
+        var pk = body.querySelector('#gpsPark'), cp = body.querySelector('#gpsCopy'), mp = body.querySelector('#gpsMaps');
+        if (pk && cp && mp) {
+            var r3 = document.createElement('div'); r3.className = 'gps-row lx-acts3';
+            var oldRows = [pk.parentNode, mp.parentNode];
+            oldRows[0].parentNode.insertBefore(r3, oldRows[0]);
+            r3.appendChild(pk); r3.appendChild(cp); r3.appendChild(mp);
+            oldRows.forEach(function (r) { if (r && !r.children.length) r.remove(); });
+        }
         /* ما تبقى في الشبكة (اتجاه الأداة المعتمد للسهم) يبقى مخفيًا لكنه يُحدَّث كما كان */
         var grid = body.querySelector(':scope > .gps-grid'); if (grid) grid.classList.add('lx-emptied');
         mid.addEventListener('click', onDash);
